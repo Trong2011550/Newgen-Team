@@ -1,0 +1,104 @@
+# ============================================================
+#  NewGen Team - menus/main.yml
+#  Tùy chỉnh giao diện menu chính (/team).
+#  Chỉ cần ghi đè những gì bạn muốn đổi — key nào thiếu sẽ dùng
+#  giá trị mặc định của plugin. Text lấy từ lang/*.yml (gui.main.*).
+#  Layout overrides for the main menu (/team).
+#  Override only what you want to change — missing keys fall back
+#  to the plugin defaults. All text comes from lang/*.yml (gui.main.*).
+# ============================================================
+
+# Tiêu đề menu. Hỗ trợ MiniMessage + token theme (<primary>, <accent>...).
+# Menu title. Supports MiniMessage + theme tokens (<primary>, <accent>...).
+#title: "<primary>NewGen Team"
+
+# Số hàng của menu (1-6). Mặc định: 6.
+# Menu rows (1-6). Default: 6.
+#rows: 6
+
+# Mỗi item nhận các key sau (tất cả đều tùy chọn):
+#   slot               - vị trí ô (0 = trên-trái)
+#   material           - tên Material của Minecraft (vd: NETHER_STAR)
+#   glow               - true/false: hiệu ứng phát sáng
+#   custom-model-data  - CustomModelData cho resource pack
+#   enabled            - false: ẩn item này hoàn toàn
+# Every item accepts these keys (all optional):
+#   slot               - inventory slot (0 = top-left)
+#   material           - Minecraft Material name (e.g. NETHER_STAR)
+#   glow               - true/false: enchant glint
+#   custom-model-data  - CustomModelData for resource packs
+#   enabled            - false: hide this item entirely
+items:
+  # --- Khi CHƯA có team / When NOT in a team ---
+  create:
+    slot: 29
+    material: NETHER_STAR
+    glow: true
+  my-invites:
+    slot: 31
+    material: NAME_TAG
+    glow: true
+
+  # --- Khi ĐÃ có team / When in a team ---
+  team-info:
+    slot: 4
+    material: PLAYER_HEAD
+    glow: true
+  members:
+    slot: 19
+    material: PLAYER_HEAD
+  invites:
+    slot: 22
+    material: NAME_TAG
+  permissions:
+    slot: 25
+    material: WRITABLE_BOOK
+  chest:
+    slot: 28
+    material: CHEST
+    glow: true
+  bank:
+    slot: 31
+    material: GOLD_BLOCK
+    glow: true
+  upgrade:
+    slot: 34
+    material: ANVIL
+  homes:
+    slot: 37
+    material: ENDER_CHEST
+  settings:
+    slot: 40
+    material: COMPARATOR
+  stats:
+    slot: 43
+    material: DIAMOND
+  disband:
+    slot: 45
+    material: TNT
+  leave:
+    slot: 45
+    material: OAK_DOOR
+  chat-toggle:
+    slot: 46
+  # --- Chung / Shared ---
+  players:
+    slot: 47
+    material: ENDER_EYE
+    glow: true
+  relations:
+    slot: 48
+    material: EMERALD
+  browse-teams:
+    slot: 49
+    material: WHITE_BANNER
+    glow: true
+  leaderboard:
+    slot: 50
+    material: GOLD_INGOT
+  join-requests:
+    slot: 51
+    material: LIME_DYE
+  close:
+    slot: 53
+    material: BARRIER

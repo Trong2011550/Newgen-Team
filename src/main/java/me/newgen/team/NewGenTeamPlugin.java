@@ -5,6 +5,7 @@ import me.newgen.team.config.ConfigManager;
 import me.newgen.team.config.LanguageManager;
 import me.newgen.team.config.MessageManager;
 import me.newgen.team.config.ThemeManager;
+import me.newgen.team.gui.MenuLayoutManager;
 import me.newgen.team.gui.MenuManager;
 import me.newgen.team.hook.PlaceholderHook;
 import me.newgen.team.hook.PlayerPointsHook;
@@ -59,6 +60,7 @@ public final class NewGenTeamPlugin extends JavaPlugin {
     private AuditLogService auditLogService;
     private AdminService adminService;
 
+    private MenuLayoutManager menuLayoutManager;
     private MenuManager menuManager;
 
     @Override
@@ -106,6 +108,8 @@ public final class NewGenTeamPlugin extends JavaPlugin {
         PacketEvents.getAPI().init();
         PacketEvents.getAPI().getEventManager().registerListener(signInputService);
 
+        this.menuLayoutManager = new MenuLayoutManager(this);
+        menuLayoutManager.load();
         this.menuManager = new MenuManager(this);
 
         storage.init().whenComplete((v, ex) -> {
@@ -170,6 +174,7 @@ public final class NewGenTeamPlugin extends JavaPlugin {
         themeManager.load();
         languageManager.load(configManager.language());
         messageManager.load();
+        menuLayoutManager.load();
         teamService.configure(configManager.maxNameLength(), configManager.maxTagLength(),
                 configManager.maxMembers(), configManager.inviteTtlSeconds());
     }
@@ -192,5 +197,6 @@ public final class NewGenTeamPlugin extends JavaPlugin {
     public SignInputService signInput() { return signInputService; }
     public AuditLogService auditLogs() { return auditLogService; }
     public AdminService admin() { return adminService; }
+    public MenuLayoutManager menuLayouts() { return menuLayoutManager; }
     public MenuManager menus() { return menuManager; }
 }
