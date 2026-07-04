@@ -33,6 +33,8 @@ dependencies {
 
     implementation("com.zaxxer:HikariCP:5.1.0")
     implementation("org.xerial:sqlite-jdbc:3.47.1.0")
+    implementation("org.mariadb.jdbc:mariadb-java-client:3.5.1")
+    implementation("org.postgresql:postgresql:42.7.4")
 }
 
 java {
@@ -48,8 +50,12 @@ tasks {
         archiveClassifier.set("")
         relocate("com.zaxxer.hikari", "me.newgen.team.libs.hikari")
         relocate("org.sqlite", "me.newgen.team.libs.sqlite")
+        relocate("org.mariadb.jdbc", "me.newgen.team.libs.mariadb")
+        relocate("org.postgresql", "me.newgen.team.libs.postgresql")
         minimize {
             exclude(dependency("org.xerial:sqlite-jdbc:.*"))
+            exclude(dependency("org.mariadb.jdbc:mariadb-java-client:.*"))
+            exclude(dependency("org.postgresql:postgresql:.*"))
         }
     }
     build {

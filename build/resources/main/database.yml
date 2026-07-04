@@ -5,10 +5,10 @@
 # ============================================================
 
 database:
-  # Loại database. Hiện hỗ trợ: SQLITE.
-  # (MYSQL / MARIADB / POSTGRESQL sẽ được hỗ trợ trong bản tới.)
-  # Database type. Currently supported: SQLITE.
-  # (MYSQL / MARIADB / POSTGRESQL support is coming in a later update.)
+  # Loại database. Hỗ trợ: SQLITE, MYSQL, MARIADB, POSTGRESQL.
+  # Giá trị không hợp lệ sẽ tự dùng SQLITE.
+  # Database type. Supported: SQLITE, MYSQL, MARIADB, POSTGRESQL.
+  # Invalid values fall back to SQLITE.
   type: SQLITE
 
   # Tên file SQLite (nằm trong thư mục plugin). Chỉ dùng khi type: SQLITE.

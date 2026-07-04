@@ -26,7 +26,8 @@ import me.newgen.team.service.RelationService;
 import me.newgen.team.service.StatsService;
 import me.newgen.team.service.TeamService;
 import me.newgen.team.service.TierService;
-import me.newgen.team.storage.SqliteStorage;
+import me.newgen.team.storage.DatabaseSettings;
+import me.newgen.team.storage.JdbcStorage;
 import me.newgen.team.storage.StorageProvider;
 import com.github.retrooper.packetevents.PacketEvents;
 import io.github.retrooper.packetevents.factory.spigot.SpigotPacketEventsBuilder;
@@ -83,7 +84,8 @@ public final class NewGenTeamPlugin extends JavaPlugin {
         this.playerPointsHook = new PlayerPointsHook(getLogger());
         playerPointsHook.hook();
 
-        this.storage = new SqliteStorage(getLogger(), getDataFolder());
+        this.storage = new JdbcStorage(getLogger(), getDataFolder(),
+                new DatabaseSettings(configManager.database()));
 
         this.permissionManager = new PermissionManager();
         this.teamService = new TeamService(storage);
