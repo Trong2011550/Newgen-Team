@@ -1,0 +1,33 @@
+# ============================================================
+#  NewGen Team - database.yml
+#  Cấu hình kết nối cơ sở dữ liệu.
+#  Database connection settings.
+# ============================================================
+
+database:
+  # Loại database. Hiện hỗ trợ: SQLITE.
+  # (MYSQL / MARIADB / POSTGRESQL sẽ được hỗ trợ trong bản tới.)
+  # Database type. Currently supported: SQLITE.
+  # (MYSQL / MARIADB / POSTGRESQL support is coming in a later update.)
+  type: SQLITE
+
+  # Tên file SQLite (nằm trong thư mục plugin). Chỉ dùng khi type: SQLITE.
+  # SQLite file name (inside the plugin folder). Only used when type: SQLITE.
+  file: newgenteam.db
+
+  # Các thông số dưới đây chỉ dùng cho database dạng server (MySQL/MariaDB/PostgreSQL).
+  # The settings below only apply to server databases (MySQL/MariaDB/PostgreSQL).
+  host: localhost
+  port: 3306
+  name: newgenteam
+  username: root
+  password: ""
+
+  pool:
+    # Số kết nối tối đa trong pool (HikariCP).
+    # Maximum connections in the pool (HikariCP).
+    size: 10
+
+    # Thời gian chờ lấy kết nối (ms) trước khi báo lỗi.
+    # How long (ms) to wait for a connection before failing.
+    connection-timeout: 5000

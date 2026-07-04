@@ -1,0 +1,16 @@
+# ============================================================
+#  NewGen Team - chest.yml
+#  Cấu hình rương chung của team.
+#  Shared team chest settings.
+#  Lưu ý: số trang rương theo cấp team nằm ở levels.yml.
+#  Note: chest pages per team level are defined in levels.yml.
+# ============================================================
+
+chest:
+  # Chu kỳ (giây) tự động lưu nội dung rương xuống database.
+  # Interval (seconds) between automatic chest saves to the database.
+  flush-interval-seconds: 300
+
+  # Tiêu đề trang rương. Placeholder: %team%, %page%, %pages%.
+  # Chest page title. Placeholders: %team%, %page%, %pages%.
+  page-title: "&#f3a9c8&lRương Team &#ffd6e7- &#f7c6d9%team% &8(%page%/%pages%)"
