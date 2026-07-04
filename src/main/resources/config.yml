@@ -1,0 +1,44 @@
+# Ngôn ngữ hiển thị. File tương ứng nằm trong lang/ (vi_VN, en_US).
+# Key thiếu sẽ tự fallback sang en_US.
+language: vi_VN
+
+team:
+  max-name-length: 16
+  max-tag-length: 6
+  # Số thành viên cơ bản (cấp nâng cấp 0). Giới hạn thực = base + level*step.
+  max-members: 30
+  invite-ttl-seconds: 120
+
+tiers:
+  1:
+    pages: 1
+    member-limit: 5
+    home-limit: 1
+    price: 0
+  2:
+    pages: 3
+    member-limit: 8
+    home-limit: 2
+    price: 50000
+  3:
+    pages: 5
+    member-limit: 12
+    home-limit: 3
+    price: 150000
+  4:
+    pages: 7
+    member-limit: 20
+    home-limit: 5
+    price: 200000
+
+home:
+  teleport-cooldown-seconds: 5
+  teleport-warmup-seconds: 3
+  warmup-cancel-on-move: true
+
+stats:
+  track-kills: true
+
+chest:
+  flush-interval-seconds: 300
+  page-title: "&#f3a9c8&lRương Team &#ffd6e7- &#f7c6d9%team% &8(%page%/%pages%)"

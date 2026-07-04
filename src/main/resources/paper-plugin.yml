@@ -1,0 +1,26 @@
+name: NewGenTeam
+version: '${version}'
+main: me.newgen.team.NewGenTeamPlugin
+api-version: '1.21'
+author: NewGen
+description: NewGen Team - Premium team management plugin for Paper/Folia servers.
+folia-supported: true
+bootstrapper: me.newgen.team.NewGenTeamBootstrap
+dependencies:
+  server:
+    packetevents:
+      load: BEFORE
+      required: true
+      join-classpath: true
+    Vault:
+      load: BEFORE
+      required: false
+      join-classpath: true
+    PlayerPoints:
+      load: BEFORE
+      required: false
+      join-classpath: true
+    PlaceholderAPI:
+      load: BEFORE
+      required: false
+      join-classpath: true

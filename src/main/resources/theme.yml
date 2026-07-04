@@ -1,0 +1,33 @@
+# ============================================================
+#  NewGen Team - Theme
+#  Đổi màu tại đây => toàn bộ plugin (message, title, actionbar,
+#  GUI...) đổi theo. Dùng cú pháp MiniMessage:
+#  https://docs.advntr.dev/minimessage/format.html
+#  Ví dụ giá trị hợp lệ:
+#    "<#ff5555>"                     - màu hex
+#    "<red>"                          - màu đặt tên
+#    "<gradient:#00D4FF:#0099FF>"     - gradient
+#
+#  Trong file ngôn ngữ (lang/*.yml) dùng token:
+#    <primary> <secondary> <accent> <muted>
+#    <danger> <success> <warning> <info>
+#  LƯU Ý: token theme dùng như mã màu chuyển tiếp,
+#  KHÔNG cần tag đóng (</primary>).
+# ============================================================
+theme:
+  # Màu chữ chính (nội dung thông thường)
+  primary: "<#f7c6d9>"
+  # Màu phụ (tiêu đề, nhấn mạnh nhẹ)
+  secondary: "<#f3a9c8>"
+  # Màu nổi bật (tên riêng, số liệu quan trọng)
+  accent: "<#ffd6e7>"
+  # Màu mờ (chú thích, thông tin phụ)
+  muted: "<#d8b8c6>"
+  # Màu lỗi / hành động nguy hiểm
+  danger: "<red>"
+  # Màu thành công
+  success: "<green>"
+  # Màu cảnh báo
+  warning: "<yellow>"
+  # Màu thông tin
+  info: "<aqua>"
