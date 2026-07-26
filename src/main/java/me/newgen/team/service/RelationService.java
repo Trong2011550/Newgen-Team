@@ -65,8 +65,8 @@ public final class RelationService {
 
         accepter.relations().put(requester.id(), Team.RelationType.ALLY);
         requester.relations().put(accepter.id(), Team.RelationType.ALLY);
-        storage.saveTeam(accepter);
-        storage.saveTeam(requester);
+        teams.persist(accepter);
+        teams.persist(requester);
         return Result.SUCCESS;
     }
 
@@ -75,8 +75,8 @@ public final class RelationService {
         if (from.relations().get(other.id()) != Team.RelationType.ALLY) return Result.NOT_ALLY;
         from.relations().remove(other.id());
         other.relations().remove(from.id());
-        storage.saveTeam(from);
-        storage.saveTeam(other);
+        teams.persist(from);
+        teams.persist(other);
         return Result.SUCCESS;
     }
 
@@ -87,10 +87,10 @@ public final class RelationService {
 
         if (from.relations().get(target.id()) == Team.RelationType.ALLY) {
             target.relations().remove(from.id());
-            storage.saveTeam(target);
+            teams.persist(target);
         }
         from.relations().put(target.id(), Team.RelationType.ENEMY);
-        storage.saveTeam(from);
+        teams.persist(from);
         return Result.SUCCESS;
     }
 
@@ -98,8 +98,25 @@ public final class RelationService {
         if (target == null) return Result.NO_TARGET;
         if (from.relations().get(target.id()) != Team.RelationType.ENEMY) return Result.NOT_ENEMY;
         from.relations().remove(target.id());
-        storage.saveTeam(from);
+        teams.persist(from);
         return Result.SUCCESS;
+    }
+
+    /** Withdraws an ally request previously sent by {@code from} to {@code target}. */
+    public Result cancelRequest(Team from, Team target) {
+        if (target == null) return Result.NO_TARGET;
+        Map<UUID, Long> pending = allyRequests.get(target.id());
+        if (pending == null || pending.remove(from.id()) == null) return Result.NO_REQUEST;
+        return Result.SUCCESS;
+    }
+
+    /** Drops expired ally requests; called from the periodic sweep task. */
+    public void sweepExpired() {
+        long now = System.currentTimeMillis();
+        for (Map<UUID, Long> m : allyRequests.values()) {
+            m.entrySet().removeIf(e -> e.getValue() < now);
+        }
+        allyRequests.entrySet().removeIf(e -> e.getValue().isEmpty());
     }
 
     public Map<UUID, Long> pendingRequests(UUID teamId) {

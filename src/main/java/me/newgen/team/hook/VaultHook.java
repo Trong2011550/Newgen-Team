@@ -55,7 +55,13 @@ public final class VaultHook {
     }
 
     public boolean has(UUID player, long amount) {
-        return available && economy.has(player(player), (double) amount);
+        if (!available) return false;
+        try {
+            return economy.has(player(player), (double) amount);
+        } catch (Throwable t) {
+            log.log(Level.WARNING, "Vault balance check failed", t);
+            return false;
+        }
     }
 
     public boolean take(UUID player, long amount) {

@@ -19,7 +19,8 @@ public final class ChatService {
 
     private final Set<UUID> toggled = ConcurrentHashMap.newKeySet();
 
-    private String format = "&d[%tag%] &7%player%&8: &f%message%";
+    private volatile String format = "&d[%tag%] &7%player%&8: &f%message%";
+    private volatile boolean logToConsole = true;
 
     public ChatService(TeamService teams, MessageManager messages) {
         this.teams = teams;
@@ -28,6 +29,10 @@ public final class ChatService {
 
     public void setFormat(String format) {
         if (format != null && !format.isEmpty()) this.format = format;
+    }
+
+    public void setLogToConsole(boolean logToConsole) {
+        this.logToConsole = logToConsole;
     }
 
     public boolean isToggled(UUID player) {
@@ -50,6 +55,10 @@ public final class ChatService {
     public boolean sendTeamMessage(Player sender, String rawMessage) {
         Team team = teams.byPlayer(sender.getUniqueId());
         if (team == null) return false;
+        if (!team.settings().teamChat) {
+            messages.send(sender, "chat.team-disabled");
+            return true;
+        }
         Component out = Text.legacy(format
                 .replace("%tag%", team.tag())
                 .replace("%team%", team.name())
@@ -60,6 +69,9 @@ public final class ChatService {
             if (p != null && p.isOnline()) {
                 p.sendMessage(out);
             }
+        }
+        if (logToConsole) {
+            Bukkit.getConsoleSender().sendMessage(out);
         }
         return true;
     }

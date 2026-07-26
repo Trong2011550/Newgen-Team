@@ -40,7 +40,7 @@ public final class StatsMenu extends Menu {
         for (int i = 0; i < size(); i++) set(i, Icons.filler());
 
         Team team = plugin.teams().byPlayer(viewer.getUniqueId());
-        if (team == null) { viewer.closeInventory(); return; }
+        if (team == null) { abort(); return; }
 
         ChestTier tier = plugin.config().chestConfig().tier(team.chestLevel());
         String leaderName = Bukkit.getOfflinePlayer(team.leader()).getName();

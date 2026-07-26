@@ -31,6 +31,7 @@ dependencies {
     // PacketEvents (provided at runtime by the standalone plugin; load: BEFORE)
     compileOnly("com.github.retrooper:packetevents-spigot:2.11.2")
 
+    implementation("org.bstats:bstats-bukkit:3.2.1")
     implementation("com.zaxxer:HikariCP:5.1.0")
     implementation("org.xerial:sqlite-jdbc:3.47.1.0")
     implementation("org.mariadb.jdbc:mariadb-java-client:3.5.1")
@@ -48,6 +49,7 @@ tasks {
     }
     shadowJar {
         archiveClassifier.set("")
+        relocate("org.bstats", "me.newgen.team.libs.bstats")
         relocate("com.zaxxer.hikari", "me.newgen.team.libs.hikari")
         relocate("org.sqlite", "me.newgen.team.libs.sqlite")
         relocate("org.mariadb.jdbc", "me.newgen.team.libs.mariadb")

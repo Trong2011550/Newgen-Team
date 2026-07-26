@@ -22,15 +22,20 @@ public final class StatsService {
     public void addKill(UUID killer) {
         Team team = teams.byPlayer(killer);
         if (team == null) return;
-        team.kills(team.kills() + 1);
-        storage.saveTeam(team);
+        // Guards concurrent increments from different region threads.
+        synchronized (team) {
+            team.kills(team.kills() + 1);
+        }
+        teams.persist(team);
     }
 
     public void addDeath(UUID victim) {
         Team team = teams.byPlayer(victim);
         if (team == null) return;
-        team.deaths(team.deaths() + 1);
-        storage.saveTeam(team);
+        synchronized (team) {
+            team.deaths(team.deaths() + 1);
+        }
+        teams.persist(team);
     }
 
     public List<Team> top(TopType type, int limit) {

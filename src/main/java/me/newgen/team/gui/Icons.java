@@ -7,13 +7,13 @@ import org.bukkit.inventory.ItemStack;
 
 public final class Icons {
 
-    public static final String PINK_SOFT = "#f7c6d9";
+    public static final String GREEN_SOFT = "#b7f0c0";
 
-    public static final String PINK_MID = "#f3a9c8";
+    public static final String GREEN_MID = "#8fd6a0";
 
-    public static final String PINK_LIGHT = "#ffd6e7";
+    public static final String GREEN_LIGHT = "#d9f7e0";
 
-    public static final String GRAY_SOFT = "#d8b8c6";
+    public static final String GRAY_SOFT = "#a3b8a9";
 
     private static MessageManager messages;
 
@@ -29,7 +29,7 @@ public final class Icons {
     }
 
     public static ItemStack filler() {
-        return ItemBuilder.of(Material.PINK_STAINED_GLASS_PANE)
+        return ItemBuilder.of(Material.LIME_STAINED_GLASS_PANE)
                 .name(" ")
                 .hideAll()
                 .build();
@@ -65,7 +65,7 @@ public final class Icons {
     }
 
     public static ItemStack cancel() {
-        return ItemBuilder.of(Material.PINK_DYE)
+        return ItemBuilder.of(Material.LIME_DYE)
                 .name(lang("gui.common.cancel"))
                 .lore(lang("gui.common.cancel-lore"))
                 .build();

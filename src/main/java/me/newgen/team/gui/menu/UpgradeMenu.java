@@ -46,7 +46,7 @@ public final class UpgradeMenu extends Menu {
         for (int i = 0; i < size(); i++) set(i, Icons.filler());
 
         Team team = plugin.teams().byPlayer(viewer.getUniqueId());
-        if (team == null) { viewer.closeInventory(); return; }
+        if (team == null) { abort(); return; }
 
         boolean economy = plugin.playerPoints().isAvailable();
         long balance = economy ? plugin.playerPoints().balance(viewer.getUniqueId()) : 0;

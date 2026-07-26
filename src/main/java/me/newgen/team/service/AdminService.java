@@ -62,7 +62,7 @@ public final class AdminService {
         }
         String old = team.tag();
         team.tag(newTag);
-        plugin.storage().saveTeam(team);
+        plugin.teams().persist(team);
         logs().record(team, staff, staffName, AuditAction.CHANGE_TAG, null, null, old + " → " + newTag);
         return AdminResult.ok("Đã đổi tag team thành " + newTag + ".");
     }
@@ -76,7 +76,7 @@ public final class AdminService {
         if (old != null) old.role(TeamRole.CO_OWNER);
         target.role(TeamRole.OWNER);
         team.leader(newLeader);
-        plugin.storage().saveTeam(team);
+        plugin.teams().persist(team);
         logs().record(team, staff, staffName, AuditAction.CHANGE_LEADER,
                 newLeader, target.name(), "Chuyển quyền (admin)");
         return AdminResult.ok("Đã đặt " + target.name() + " làm chủ team.");
@@ -96,7 +96,7 @@ public final class AdminService {
         if (old == newRole) return AdminResult.fail("Thành viên đã ở chức vụ này.");
         boolean promote = newRole.weight() > old.weight();
         m.role(newRole);
-        plugin.storage().saveTeam(team);
+        plugin.teams().persist(team);
         logs().record(team, staff, staffName,
                 promote ? AuditAction.PROMOTE : AuditAction.DEMOTE,
                 target, m.name(), old.name() + " → " + newRole.name());
@@ -114,7 +114,7 @@ public final class AdminService {
         team.removeMember(target);
         plugin.teams().removeMemberIndex(target);
         plugin.chat().clear(target);
-        plugin.storage().saveTeam(team);
+        plugin.teams().persist(team);
         logs().record(team, staff, staffName, AuditAction.KICK, target, memberName, "Đuổi (admin)");
         return AdminResult.ok("Đã đuổi " + memberName + " khỏi team.");
     }
@@ -127,7 +127,7 @@ public final class AdminService {
         if (team.size() >= plugin.teams().memberLimit(team)) return AdminResult.fail("Team đã đầy thành viên.");
         team.addMember(new TeamMember(target, targetName, TeamRole.RECRUIT, System.currentTimeMillis()));
         plugin.teams().putMemberIndex(target, team.id());
-        plugin.storage().saveTeam(team);
+        plugin.teams().persist(team);
         logs().record(team, staff, staffName, AuditAction.ADD_MEMBER, target, targetName, "Thêm (admin)");
         return AdminResult.ok("Đã thêm " + targetName + " vào team.");
     }
@@ -144,7 +144,7 @@ public final class AdminService {
             plugin.teams().removeMemberIndex(id);
             plugin.chat().clear(id);
         }
-        plugin.storage().saveTeam(team);
+        plugin.teams().persist(team);
         logs().record(team, staff, staffName, AuditAction.REMOVE_MEMBER, null, null,
                 "Xóa " + toRemove.size() + " thành viên (admin)");
         return AdminResult.ok("Đã xóa " + toRemove.size() + " thành viên khỏi team.");
@@ -164,11 +164,22 @@ public final class AdminService {
     public AdminResult adjustBank(Team team, UUID staff, String staffName, long delta) {
         if (team == null) return AdminResult.fail("Team không tồn tại.");
         if (delta == 0) return AdminResult.fail("Số tiền phải khác 0.");
-        long current = team.balance();
-        long updated = current + delta;
-        if (updated < 0) return AdminResult.fail("Quỹ team không đủ để trừ (hiện có $" + current + ").");
-        team.balance(updated);
-        plugin.storage().saveTeam(team);
+        long current;
+        long updated;
+        // Same lock as BankMenu's deposit/withdraw path.
+        team.chestLock.lock();
+        try {
+            current = team.balance();
+            updated = current + delta;
+            if (delta > 0 && updated < current) {
+                return AdminResult.fail("Số tiền vượt giới hạn số dư.");
+            }
+            if (updated < 0) return AdminResult.fail("Quỹ team không đủ để trừ (hiện có $" + current + ").");
+            team.balance(updated);
+        } finally {
+            team.chestLock.unlock();
+        }
+        plugin.teams().persist(team);
         logs().record(team, staff, staffName,
                 delta > 0 ? AuditAction.BANK_DEPOSIT : AuditAction.BANK_WITHDRAW,
                 null, null, (delta > 0 ? "+" : "") + delta + " → $" + updated + " (admin)");
@@ -178,9 +189,15 @@ public final class AdminService {
     public AdminResult setBank(Team team, UUID staff, String staffName, long amount) {
         if (team == null) return AdminResult.fail("Team không tồn tại.");
         if (amount < 0) return AdminResult.fail("Số dư không thể âm.");
-        long old = team.balance();
-        team.balance(amount);
-        plugin.storage().saveTeam(team);
+        long old;
+        team.chestLock.lock();
+        try {
+            old = team.balance();
+            team.balance(amount);
+        } finally {
+            team.chestLock.unlock();
+        }
+        plugin.teams().persist(team);
         logs().record(team, staff, staffName, AuditAction.BANK_SET, null, null,
                 "$" + old + " → $" + amount + " (admin)");
         return AdminResult.ok("Đã đặt quỹ team thành $" + amount + ".");
@@ -196,7 +213,8 @@ public final class AdminService {
     public AdminResult setHome(Team team, UUID staff, String staffName, Location loc) {
         if (team == null) return AdminResult.fail("Team không tồn tại.");
         if (loc == null || loc.getWorld() == null) return AdminResult.fail("Vị trí không hợp lệ.");
-        plugin.homes().setHome(team, loc, plugin.teams());
+        // Admin override: not subject to the tier home limit.
+        plugin.homes().setHome(team, loc, Integer.MAX_VALUE);
         logs().record(team, staff, staffName, AuditAction.HOME_SET, null, null,
                 "Đặt nhà tại " + loc.getWorld().getName() + " (admin)");
         return AdminResult.ok("Đã đặt nhà team tại vị trí của bạn.");
@@ -209,7 +227,7 @@ public final class AdminService {
         }
         team.home(null);
         team.namedHomes().clear();
-        plugin.storage().saveTeam(team);
+        plugin.teams().persist(team);
         logs().record(team, staff, staffName, AuditAction.HOME_DELETE, null, null, "Xóa toàn bộ nhà (admin)");
         return AdminResult.ok("Đã xóa nhà team.");
     }
@@ -219,8 +237,8 @@ public final class AdminService {
         if (a.id().equals(b.id())) return AdminResult.fail("Không thể đặt quan hệ với chính team đó.");
         a.relations().put(b.id(), Team.RelationType.ALLY);
         b.relations().put(a.id(), Team.RelationType.ALLY);
-        plugin.storage().saveTeam(a);
-        plugin.storage().saveTeam(b);
+        plugin.teams().persist(a);
+        plugin.teams().persist(b);
         logs().record(a, staff, staffName, AuditAction.RELATION_ALLY, b.id(), b.name(), "Liên minh (admin)");
         return AdminResult.ok("Đã đặt " + a.name() + " và " + b.name() + " thành liên minh.");
     }
@@ -231,8 +249,8 @@ public final class AdminService {
 
         b.relations().remove(a.id());
         a.relations().put(b.id(), Team.RelationType.ENEMY);
-        plugin.storage().saveTeam(a);
-        plugin.storage().saveTeam(b);
+        plugin.teams().persist(a);
+        plugin.teams().persist(b);
         logs().record(a, staff, staffName, AuditAction.RELATION_ENEMY, b.id(), b.name(), "Kẻ thù (admin)");
         return AdminResult.ok("Đã đặt " + b.name() + " là kẻ thù của " + a.name() + ".");
     }
@@ -241,8 +259,8 @@ public final class AdminService {
         if (a == null || b == null) return AdminResult.fail("Team không tồn tại.");
         a.relations().remove(b.id());
         b.relations().remove(a.id());
-        plugin.storage().saveTeam(a);
-        plugin.storage().saveTeam(b);
+        plugin.teams().persist(a);
+        plugin.teams().persist(b);
         logs().record(a, staff, staffName, AuditAction.RELATION_NEUTRAL, b.id(), b.name(), "Trung lập (admin)");
         return AdminResult.ok("Đã đặt quan hệ giữa " + a.name() + " và " + b.name() + " thành trung lập.");
     }
@@ -256,7 +274,7 @@ public final class AdminService {
         int old = team.tier();
         if (old == newTier) return AdminResult.fail("Team đã ở cấp này.");
         team.tier(newTier);
-        plugin.storage().saveTeam(team);
+        plugin.teams().persist(team);
 
         plugin.chests().invalidate(team);
         logs().record(team, staff, staffName, AuditAction.TIER_CHANGE, null, null,
@@ -277,7 +295,7 @@ public final class AdminService {
             case "allyRequests" -> s.allyRequests = value;
             default -> { return AdminResult.fail("Cài đặt không xác định: " + settingKey); }
         }
-        plugin.storage().saveTeam(team);
+        plugin.teams().persist(team);
         logs().record(team, staff, staffName, AuditAction.EDIT_SETTINGS, null, null,
                 settingKey + " = " + value + " (admin)");
         return AdminResult.ok("Đã cập nhật cài đặt " + settingKey + ".");
@@ -295,12 +313,12 @@ public final class AdminService {
             Team other = plugin.teams().byId(otherId);
             if (other != null) {
                 other.relations().remove(team.id());
-                plugin.storage().saveTeam(other);
+                plugin.teams().persist(other);
             }
         }
         team.relations().clear();
         plugin.chests().resetChest(team);
-        plugin.storage().saveTeam(team);
+        plugin.teams().persist(team);
 
         logs().purge(team.id()).whenComplete((v, ex) ->
                 logs().record(team, staff, staffName, AuditAction.RESET_DATA, null, null,

@@ -44,6 +44,18 @@ public final class CombatListener implements Listener {
                 && proj.getShooter() instanceof Player shooter) {
             return shooter;
         }
+        if (event.getDamager() instanceof org.bukkit.entity.TNTPrimed tnt
+                && tnt.getSource() instanceof Player igniter) {
+            return igniter;
+        }
+        if (event.getDamager() instanceof org.bukkit.entity.AreaEffectCloud cloud
+                && cloud.getSource() instanceof Player thrower) {
+            return thrower;
+        }
+        if (event.getDamager() instanceof org.bukkit.entity.Tameable pet
+                && pet.getOwner() instanceof Player owner) {
+            return owner;
+        }
         return null;
     }
 

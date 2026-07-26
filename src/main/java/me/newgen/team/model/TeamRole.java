@@ -1,6 +1,3 @@
-/*
- * Decompiled with CFR 0.152.
- */
 package me.newgen.team.model;
 
 import me.newgen.team.permission.TeamPermission;
@@ -8,12 +5,12 @@ import java.util.EnumSet;
 import java.util.Set;
 
 public enum TeamRole {
-    OWNER(100, "&#f3a9c8&lCh\u1ee7 Team"),
-    CO_OWNER(80, "&#f7c6d9Ph\u00f3 Ch\u1ee7"),
-    ADMIN(60, "&#ffd6e7Qu\u1ea3n tr\u1ecb"),
-    MOD(40, "&#ffd6e7\u0110i\u1ec1u h\u00e0nh"),
-    MEMBER(20, "&#d8b8c6Th\u00e0nh vi\u00ean"),
-    RECRUIT(10, "&#d8b8c6T\u00e2n binh");
+    OWNER(100, "&#8fd6a0&lCh\u1ee7 Team"),
+    CO_OWNER(80, "&#b7f0c0Ph\u00f3 Ch\u1ee7"),
+    ADMIN(60, "&#d9f7e0Qu\u1ea3n tr\u1ecb"),
+    MOD(40, "&#d9f7e0\u0110i\u1ec1u h\u00e0nh"),
+    MEMBER(20, "&#a3b8a9Th\u00e0nh vi\u00ean"),
+    RECRUIT(10, "&#a3b8a9T\u00e2n binh");
 
     private final int weight;
     private final String display;

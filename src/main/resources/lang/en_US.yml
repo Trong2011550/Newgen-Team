@@ -92,6 +92,7 @@ home:
 chat:
   enabled: "<primary>Team chat enabled. Your messages will go to teammates."
   disabled: "<accent>Team chat disabled."
+  team-disabled: "<danger>Team chat is turned off in your team's settings."
 
 relation:
   ally-set: "<primary>You are now allied with team <accent>%team%<primary>."

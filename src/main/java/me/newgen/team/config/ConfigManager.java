@@ -32,7 +32,12 @@ public final class ConfigManager {
 
     private boolean trackKills = true;
 
+    private String teamChatFormat = "&d[%tag%] &7%player%&8: &f%message%";
+    private boolean teamChatLogToConsole = true;
+
     private FileConfiguration database = new YamlConfiguration();
+    private FileConfiguration hooks = new YamlConfiguration();
+    private FileConfiguration logs = new YamlConfiguration();
 
     public ConfigManager(Plugin plugin) {
         this.plugin = plugin;
@@ -44,11 +49,14 @@ public final class ConfigManager {
         language = plugin.getConfig().getString("language", language);
 
         FileConfiguration settings = loadYaml("settings.yml");
-        maxNameLength = settings.getInt("team.max-name-length", maxNameLength);
-        maxTagLength = settings.getInt("team.max-tag-length", maxTagLength);
+        // Clamped to the database column width (VARCHAR(64)).
+        maxNameLength = clamp(settings.getInt("team.max-name-length", maxNameLength), 1, 64);
+        maxTagLength = clamp(settings.getInt("team.max-tag-length", maxTagLength), 1, 64);
         maxMembers = settings.getInt("team.max-members", maxMembers);
         inviteTtlSeconds = settings.getLong("team.invite-ttl-seconds", inviteTtlSeconds);
         trackKills = settings.getBoolean("stats.track-kills", trackKills);
+        teamChatFormat = settings.getString("chat.team-format", teamChatFormat);
+        teamChatLogToConsole = settings.getBoolean("chat.log-to-console", teamChatLogToConsole);
 
         FileConfiguration homes = loadYaml("homes.yml");
         homeTeleportCooldownSeconds = homes.getInt("home.teleport-cooldown-seconds", homeTeleportCooldownSeconds);
@@ -65,6 +73,12 @@ public final class ConfigManager {
         chestConfig.syncFromTiers(tierConfig);
 
         database = loadYaml("database.yml");
+        hooks = loadYaml("hooks.yml");
+        logs = loadYaml("logs.yml");
+    }
+
+    private static int clamp(int v, int min, int max) {
+        return Math.max(min, Math.min(max, v));
     }
 
     /**
@@ -86,6 +100,21 @@ public final class ConfigManager {
     /** Raw database.yml (consumed by the storage layer). */
     public FileConfiguration database() { return database; }
 
+    /** true when the given hook is enabled in hooks.yml (default: true). */
+    public boolean hookEnabled(String name) {
+        return hooks.getBoolean("hooks." + name, true);
+    }
+
+    /** true when file logging is enabled globally AND for the given category (logs.yml). */
+    public boolean logEnabled(String category) {
+        return logs.getBoolean("logs.enabled", true) && logs.getBoolean("logs." + category, true);
+    }
+
+    /** Debug mode toggle from logs.yml. */
+    public boolean debug() {
+        return logs.getBoolean("debug", false);
+    }
+
     public int maxNameLength() { return maxNameLength; }
     public int maxTagLength() { return maxTagLength; }
     public int maxMembers() { return maxMembers; }
@@ -95,4 +124,6 @@ public final class ConfigManager {
     public boolean homeWarmupCancelOnMove() { return homeWarmupCancelOnMove; }
     public long chestFlushIntervalSeconds() { return chestFlushIntervalSeconds; }
     public boolean trackKills() { return trackKills; }
+    public String teamChatFormat() { return teamChatFormat; }
+    public boolean teamChatLogToConsole() { return teamChatLogToConsole; }
 }

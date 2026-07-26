@@ -1,10 +1,12 @@
 package me.newgen.team.service;
 
+import me.newgen.team.api.event.TeamLevelUpEvent;
 import me.newgen.team.config.ConfigManager;
 import me.newgen.team.config.TierConfig;
 import me.newgen.team.hook.PlayerPointsHook;
 import me.newgen.team.model.Team;
 import me.newgen.team.storage.StorageProvider;
+import org.bukkit.Bukkit;
 
 import java.util.UUID;
 
@@ -21,6 +23,18 @@ public final class TierService {
         this.points = points;
         this.chestService = chestService;
         this.storage = storage;
+    }
+
+    private TeamService teams;
+
+    public void setTeams(TeamService teams) {
+        this.teams = teams;
+    }
+
+    /** Persist through TeamService.persist() so failures are logged, not swallowed. */
+    private void persist(Team team) {
+        if (teams != null) teams.persist(team);
+        else storage.saveTeam(team);
     }
 
     public enum Result {
@@ -50,25 +64,34 @@ public final class TierService {
     public int homeLimit(Team team) { return cfg().homeLimit(team.tier()); }
 
     public Result upgrade(Team team, UUID purchaser) {
-        if (isMaxLevel(team)) return Result.MAX_LEVEL;
-        if (!points.isAvailable()) return Result.NO_ECONOMY;
+        int oldTier;
+        // One purchase at a time per team.
+        synchronized (team) {
+            if (isMaxLevel(team)) return Result.MAX_LEVEL;
+            if (!points.isAvailable()) return Result.NO_ECONOMY;
 
-        long price = nextPrice(team);
-        if (price < 0) return Result.MAX_LEVEL;
-        if (!points.has(purchaser, price)) return Result.INSUFFICIENT_FUNDS;
-        if (!points.take(purchaser, price)) return Result.INSUFFICIENT_FUNDS;
+            long price = nextPrice(team);
+            if (price < 0) return Result.MAX_LEVEL;
+            if (price > 0) {
+                // price 0 = free tier; take() rejects non-positive amounts.
+                if (!points.has(purchaser, price)) return Result.INSUFFICIENT_FUNDS;
+                if (!points.take(purchaser, price)) return Result.INSUFFICIENT_FUNDS;
+            }
 
-        try {
-            team.tier(team.tier() + 1);
-            storage.saveTeam(team);
-
-            chestService.resizeForUpgrade(team);
-            return Result.SUCCESS;
-        } catch (Exception e) {
-
-            team.tier(team.tier() - 1);
-            points.give(purchaser, price);
-            return Result.FAILED;
+            oldTier = team.tier();
+            try {
+                team.tier(oldTier + 1);
+                persist(team);
+                chestService.resizeForUpgrade(team);
+            } catch (Exception e) {
+                team.tier(oldTier);
+                // Re-persist the reverted tier; the new value may already be queued.
+                persist(team);
+                if (price > 0) points.give(purchaser, price);
+                return Result.FAILED;
+            }
         }
+        Bukkit.getPluginManager().callEvent(new TeamLevelUpEvent(team, purchaser, oldTier, team.tier()));
+        return Result.SUCCESS;
     }
 }

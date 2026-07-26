@@ -137,6 +137,11 @@ public final class HomeMenu extends PaginatedMenu<Map.Entry<String, TeamHome>> {
                 new HomeMenu(plugin, viewer).open();
                 return;
             }
+            // Membership may have changed while the sign was open.
+            if (plugin.teams().byPlayer(viewer.getUniqueId()) != team) {
+                plugin.messages().send(viewer, "team.not-in");
+                return;
+            }
             int limit = plugin.tiers().homeLimit(team);
             HomeService.SetResult r = plugin.homes().setNamedHome(team, name, viewer.getLocation(), limit);
             switch (r) {

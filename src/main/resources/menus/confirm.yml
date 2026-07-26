@@ -1,0 +1,29 @@
+# ============================================================
+#  NewGen Team - menus/confirm.yml
+#  Tùy chỉnh giao diện menu xác nhận (dùng chung cho mọi hành động
+#  cần xác nhận: giải tán team, kick thành viên, rời team...).
+#  Chỉ cần ghi đè những gì bạn muốn đổi - key nào thiếu sẽ dùng
+#  giá trị mặc định của plugin.
+#  Layout overrides for the shared confirmation menu (disband,
+#  kick, leave...). Override only what you want to change -
+#  missing keys fall back to the plugin defaults.
+# ============================================================
+
+# Số hàng của menu (1-6). Mặc định: 3.
+# Menu rows (1-6). Default: 3.
+#rows: 3
+
+# Mỗi item nhận: slot, material, glow, custom-model-data, enabled (xem menus/main.yml).
+# Each item accepts: slot, material, glow, custom-model-data, enabled (see menus/main.yml).
+items:
+  info:
+    slot: 13
+    material: PAPER
+    glow: true
+  confirm:
+    slot: 11
+  cancel:
+    slot: 15
+  back:
+    slot: 22
+    material: ARROW

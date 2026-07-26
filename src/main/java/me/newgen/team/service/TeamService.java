@@ -4,7 +4,13 @@ import me.newgen.team.model.Team;
 import me.newgen.team.model.TeamMember;
 import me.newgen.team.model.TeamRole;
 import me.newgen.team.model.TeamSettings;
+import me.newgen.team.api.event.TeamCreateEvent;
+import me.newgen.team.api.event.TeamDeleteEvent;
+import me.newgen.team.api.event.TeamJoinEvent;
+import me.newgen.team.api.event.TeamKickEvent;
+import me.newgen.team.api.event.TeamLeaveEvent;
 import me.newgen.team.storage.StorageProvider;
+import org.bukkit.Bukkit;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -34,6 +40,7 @@ public final class TeamService {
     private int maxMembers = 30;
 
     private TierService tiers;
+    private ChestService chests;
 
     public TeamService(StorageProvider storage) {
         this.storage = storage;
@@ -41,6 +48,33 @@ public final class TeamService {
 
     public void setTiers(TierService tiers) {
         this.tiers = tiers;
+    }
+
+    public void setChests(ChestService chests) {
+        this.chests = chests;
+    }
+
+    private LogService logs;
+
+    public void setLogs(LogService logs) {
+        this.logs = logs;
+    }
+
+    /** Persists a team; failures are reported to the error log. */
+    public void persist(Team team) {
+        // Saving a team that was disbanded meanwhile would resurrect its row.
+        if (ready && !teams.containsKey(team.id())) {
+            if (logs != null) {
+                logs.error("Dropped persist for disbanded team " + team.name() + " (" + team.id() + ")");
+            }
+            return;
+        }
+        storage.saveTeam(team).exceptionally(ex -> {
+            if (logs != null) {
+                logs.error("Failed to persist team " + team.name() + " (" + team.id() + "): " + ex.getMessage());
+            }
+            return null;
+        });
     }
 
     public int memberLimit(Team team) {
@@ -55,6 +89,11 @@ public final class TeamService {
         this.inviteTtlMillis = TimeUnit.SECONDS.toMillis(inviteTtlSeconds);
     }
 
+    /** False until loadAll() has populated the in-memory maps. */
+    private volatile boolean ready = false;
+
+    public boolean isReady() { return ready; }
+
     public void loadAll(Collection<Team> loaded) {
         teams.clear();
         playerTeam.clear();
@@ -66,6 +105,7 @@ public final class TeamService {
                 playerTeam.put(m.uuid(), t.id());
             }
         }
+        ready = true;
     }
 
     public Team byId(UUID id) { return teams.get(id); }
@@ -88,54 +128,81 @@ public final class TeamService {
         SUCCESS, ALREADY_IN_TEAM, NAME_TAKEN, NAME_INVALID, TEAM_FULL,
         NOT_IN_TEAM, NOT_INVITED, NO_PERMISSION, TARGET_NOT_FOUND,
         CANNOT_TARGET_SELF, INVITE_EXPIRED, NOT_LEADER, TARGET_IN_TEAM,
-        ALREADY_REQUESTED, NO_REQUEST
+        ALREADY_REQUESTED, NO_REQUEST, NOT_READY
     }
 
     public Result createTeam(UUID leader, String leaderName, String name, String tag) {
+        // No writes until loadAll() has finished.
+        if (!ready) return Result.NOT_READY;
         if (hasTeam(leader)) return Result.ALREADY_IN_TEAM;
         if (!isValidName(name)) return Result.NAME_INVALID;
         name = name.trim();
         if (tag != null && tag.length() > maxTagLength) return Result.NAME_INVALID;
-        if (nameIndex.containsKey(name.toLowerCase(Locale.ROOT))) return Result.NAME_TAKEN;
-
         UUID id = UUID.randomUUID();
-        Team team = new Team(id, name, tag == null ? name : tag, leader,
+        // Two concurrent creates with the same name cannot both pass.
+        if (nameIndex.putIfAbsent(name.toLowerCase(Locale.ROOT), id) != null) return Result.NAME_TAKEN;
+
+        // A missing tag falls back to the truncated name.
+        String effectiveTag = tag == null
+                ? name.substring(0, Math.min(name.length(), maxTagLength)) : tag;
+        Team team = new Team(id, name, effectiveTag, leader,
                 System.currentTimeMillis(), new TeamSettings(), 1);
         team.addMember(new TeamMember(leader, leaderName, TeamRole.OWNER, System.currentTimeMillis()));
 
         teams.put(id, team);
-        nameIndex.put(name.toLowerCase(Locale.ROOT), id);
         playerTeam.put(leader, id);
-        storage.saveTeam(team);
+        persist(team);
+        Bukkit.getPluginManager().callEvent(new TeamCreateEvent(team, leader));
         return Result.SUCCESS;
     }
 
     public Result disbandTeam(Team team) {
         if (team == null) return Result.NOT_IN_TEAM;
-        for (TeamMember m : team.members()) {
-            playerTeam.remove(m.uuid());
+        // Serialized against acceptInvite/acceptJoinRequest.
+        synchronized (team) {
+            teams.remove(team.id());
+            for (TeamMember m : team.members()) {
+                playerTeam.remove(m.uuid(), team.id());
+            }
         }
-        teams.remove(team.id());
-        nameIndex.remove(team.name().toLowerCase(Locale.ROOT));
-        joinRequests.remove(team.id());
+        nameIndex.remove(team.name().toLowerCase(Locale.ROOT), team.id());
+        Map<UUID, Long> reqs = joinRequests.remove(team.id());
+        if (reqs != null) {
+            for (UUID applicant : reqs.keySet()) joinRequestNames.remove(applicant);
+        }
+        // Flush and drop the cached chest before deleteTeam.
+        if (chests != null) chests.invalidate(team);
 
         for (Team other : teams.values()) {
-            other.relations().remove(team.id());
+            // Persist teams whose relations changed.
+            if (other.relations().remove(team.id()) != null) {
+                persist(other);
+            }
         }
-        storage.deleteTeam(team.id());
+        storage.deleteTeam(team.id()).exceptionally(ex -> {
+            if (logs != null) {
+                logs.error("Failed to delete team " + team.name() + " (" + team.id() + ") from storage: " + ex.getMessage());
+            }
+            return null;
+        });
+        Bukkit.getPluginManager().callEvent(new TeamDeleteEvent(team, null));
         return Result.SUCCESS;
     }
 
     public Result renameTeam(Team team, String newName) {
+        if (team == null || !teams.containsKey(team.id())) return Result.NOT_IN_TEAM;
         if (!isValidName(newName)) return Result.NAME_INVALID;
         newName = newName.trim();
         String key = newName.toLowerCase(Locale.ROOT);
-        UUID existing = nameIndex.get(key);
-        if (existing != null && !existing.equals(team.id())) return Result.NAME_TAKEN;
-        nameIndex.remove(team.name().toLowerCase(Locale.ROOT));
+        String oldKey = team.name().toLowerCase(Locale.ROOT);
+        if (!key.equals(oldKey)) {
+            // Claim the new name first; only one concurrent rename wins.
+            UUID existing = nameIndex.putIfAbsent(key, team.id());
+            if (existing != null && !existing.equals(team.id())) return Result.NAME_TAKEN;
+            nameIndex.remove(oldKey, team.id());
+        }
         team.name(newName);
-        nameIndex.put(key, team.id());
-        storage.saveTeam(team);
+        persist(team);
         return Result.SUCCESS;
     }
 
@@ -165,15 +232,28 @@ public final class TeamService {
     }
 
     public Result acceptInvite(UUID player, String playerName, UUID teamId) {
-        if (hasTeam(player)) return Result.ALREADY_IN_TEAM;
         if (!hasInvite(player, teamId)) return Result.NOT_INVITED;
         Team team = teams.get(teamId);
         if (team == null) { clearInvite(player, teamId); return Result.NOT_INVITED; }
-        if (team.size() >= memberLimit(team)) return Result.TEAM_FULL;
-        team.addMember(new TeamMember(player, playerName, TeamRole.RECRUIT, System.currentTimeMillis()));
-        playerTeam.put(player, teamId);
+        // Claim the player slot first; two concurrent accepts cannot both add.
+        if (playerTeam.putIfAbsent(player, teamId) != null) return Result.ALREADY_IN_TEAM;
+        // Concurrent joins must not push the team past its limit.
+        synchronized (team) {
+            if (teams.get(teamId) != team) {
+                // Team was disbanded between the invite check and here.
+                playerTeam.remove(player, teamId);
+                clearInvite(player, teamId);
+                return Result.NOT_INVITED;
+            }
+            if (team.size() >= memberLimit(team)) {
+                playerTeam.remove(player, teamId);
+                return Result.TEAM_FULL;
+            }
+            team.addMember(new TeamMember(player, playerName, TeamRole.RECRUIT, System.currentTimeMillis()));
+        }
         clearInvite(player, teamId);
-        storage.saveTeam(team);
+        persist(team);
+        Bukkit.getPluginManager().callEvent(new TeamJoinEvent(team, player));
         return Result.SUCCESS;
     }
 
@@ -210,6 +290,7 @@ public final class TeamService {
         if (exp == null) return false;
         if (exp < System.currentTimeMillis()) {
             m.remove(applicant);
+            joinRequestNames.remove(applicant);
             return false;
         }
         return true;
@@ -219,7 +300,13 @@ public final class TeamService {
         Map<UUID, Long> m = joinRequests.get(teamId);
         if (m == null) return Collections.emptyMap();
         long now = System.currentTimeMillis();
-        m.entrySet().removeIf(e -> e.getValue() < now);
+        m.entrySet().removeIf(e -> {
+            if (e.getValue() < now) {
+                joinRequestNames.remove(e.getKey());
+                return true;
+            }
+            return false;
+        });
         return Collections.unmodifiableMap(m);
     }
 
@@ -230,13 +317,29 @@ public final class TeamService {
     public Result acceptJoinRequest(Team team, UUID applicant) {
         if (team == null) return Result.NOT_IN_TEAM;
         if (!hasJoinRequest(team.id(), applicant)) return Result.NO_REQUEST;
-        if (hasTeam(applicant)) { clearJoinRequest(team.id(), applicant); return Result.ALREADY_IN_TEAM; }
-        if (team.size() >= memberLimit(team)) return Result.TEAM_FULL;
         String name = joinRequestNames.get(applicant);
-        team.addMember(new TeamMember(applicant, name, TeamRole.RECRUIT, System.currentTimeMillis()));
-        playerTeam.put(applicant, team.id());
+        // Claim the player slot first; two concurrent accepts cannot both add.
+        if (playerTeam.putIfAbsent(applicant, team.id()) != null) {
+            clearJoinRequest(team.id(), applicant);
+            return Result.ALREADY_IN_TEAM;
+        }
+        // Concurrent joins must not push the team past its limit.
+        synchronized (team) {
+            if (teams.get(team.id()) != team) {
+                // Team was disbanded between the request check and here.
+                playerTeam.remove(applicant, team.id());
+                clearJoinRequest(team.id(), applicant);
+                return Result.NO_REQUEST;
+            }
+            if (team.size() >= memberLimit(team)) {
+                playerTeam.remove(applicant, team.id());
+                return Result.TEAM_FULL;
+            }
+            team.addMember(new TeamMember(applicant, name, TeamRole.RECRUIT, System.currentTimeMillis()));
+        }
         clearJoinRequest(team.id(), applicant);
-        storage.saveTeam(team);
+        persist(team);
+        Bukkit.getPluginManager().callEvent(new TeamJoinEvent(team, applicant));
         return Result.SUCCESS;
     }
 
@@ -261,7 +364,8 @@ public final class TeamService {
         if (team.leader().equals(player)) return Result.NOT_LEADER;
         team.removeMember(player);
         playerTeam.remove(player);
-        storage.saveTeam(team);
+        persist(team);
+        Bukkit.getPluginManager().callEvent(new TeamLeaveEvent(team, player));
         return Result.SUCCESS;
     }
 
@@ -274,7 +378,8 @@ public final class TeamService {
         if (!actorM.role().canManage(targetM.role())) return Result.NO_PERMISSION;
         team.removeMember(target);
         playerTeam.remove(target);
-        storage.saveTeam(team);
+        persist(team);
+        Bukkit.getPluginManager().callEvent(new TeamKickEvent(team, target, actor));
         return Result.SUCCESS;
     }
 
@@ -290,7 +395,7 @@ public final class TeamService {
             return Result.NO_PERMISSION;
         }
         targetM.role(newRole);
-        storage.saveTeam(team);
+        persist(team);
         return Result.SUCCESS;
     }
 
@@ -304,7 +409,7 @@ public final class TeamService {
         if (oldM != null) oldM.role(TeamRole.CO_OWNER);
         newM.role(TeamRole.OWNER);
         team.leader(newLeader);
-        storage.saveTeam(team);
+        persist(team);
         return Result.SUCCESS;
     }
 
@@ -316,9 +421,29 @@ public final class TeamService {
 
         for (int i = 0; i < trimmed.length(); i++) {
             char c = trimmed.charAt(i);
-            if (c < 0x20 || c == 0x7F || c == '\u00A7') return false;
+            // '<' and '>' are blocked: names are substituted into MiniMessage templates.
+            if (c < 0x20 || c == 0x7F || c == '\u00A7' || c == '<' || c == '>') return false;
         }
         return true;
+    }
+
+    /** Drops expired invites and join requests. */
+    public void sweepExpired() {
+        long now = System.currentTimeMillis();
+        for (Map<UUID, Long> m : invites.values()) {
+            m.entrySet().removeIf(e -> e.getValue() < now);
+        }
+        invites.entrySet().removeIf(e -> e.getValue().isEmpty());
+        for (Map<UUID, Long> m : joinRequests.values()) {
+            m.entrySet().removeIf(e -> {
+                if (e.getValue() < now) {
+                    joinRequestNames.remove(e.getKey());
+                    return true;
+                }
+                return false;
+            });
+        }
+        joinRequests.entrySet().removeIf(e -> e.getValue().isEmpty());
     }
 
     public int maxMembers() { return maxMembers; }
@@ -332,6 +457,6 @@ public final class TeamService {
     }
 
     public void saveAll() {
-        for (Team t : teams.values()) storage.saveTeam(t);
+        for (Team t : teams.values()) persist(t);
     }
 }

@@ -126,6 +126,7 @@ public final class AllyMenu extends PaginatedMenu<Team> {
         RelationService rs = plugin.relations();
         Team.RelationType rel = own.relations().get(target.id());
         boolean pendingFromThem = rs.pendingRequests(own.id()).containsKey(target.id());
+        boolean pendingFromUs = rs.pendingRequests(target.id()).containsKey(own.id());
 
         if (event.isRightClick()) {
             RelationService.Result r = (rel == Team.RelationType.ENEMY)
@@ -135,6 +136,8 @@ public final class AllyMenu extends PaginatedMenu<Team> {
             feedback(rs.removeAlly(own, target), target, "ally");
         } else if (pendingFromThem) {
             feedback(rs.acceptAlly(own, target), target, "ally-accept");
+        } else if (pendingFromUs) {
+            feedback(rs.cancelRequest(own, target), target, "ally-cancel");
         } else {
 
             feedback(rs.requestAlly(own, target), target, "ally");

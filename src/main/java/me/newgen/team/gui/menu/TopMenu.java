@@ -30,9 +30,21 @@ public final class TopMenu extends PaginatedMenu<Team> {
     @Override protected String title() { return L("gui.top.title"); }
     @Override protected int pageSize() { return 36; }
 
+    /** Leaderboard cached per refresh; computed once per build, not per rendered item. */
+    private List<Team> cachedTop;
+
+    @Override
+    public void refresh() {
+        cachedTop = null;
+        super.refresh();
+    }
+
     @Override
     protected List<Team> elements() {
-        return plugin.stats().top(StatsService.TopType.KDR, 1000);
+        if (cachedTop == null) {
+            cachedTop = plugin.stats().top(StatsService.TopType.KDR, 1000);
+        }
+        return cachedTop;
     }
 
     @Override
@@ -50,7 +62,7 @@ public final class TopMenu extends PaginatedMenu<Team> {
 
             builder.name(me.newgen.team.util.Text.legacy("&8#1 ")
                     .append(me.newgen.team.util.Text.galaxy(team.name()))
-                    .append(me.newgen.team.util.Text.legacy(" &8[&#ffd6e7" + team.tag() + "&8]")));
+                    .append(me.newgen.team.util.Text.legacy(" &8[&#d9f7e0" + team.tag() + "&8]")));
         } else {
             builder.name(L("gui.top.entry", "rank", rank, "team", team.name(), "tag", team.tag()));
         }

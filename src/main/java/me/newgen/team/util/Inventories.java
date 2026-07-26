@@ -1,12 +1,3 @@
-/*
- * Decompiled with CFR 0.152.
- * 
- * Could not load the following classes:
- *  org.bukkit.inventory.Inventory
- *  org.bukkit.inventory.ItemStack
- *  org.bukkit.util.io.BukkitObjectInputStream
- *  org.bukkit.util.io.BukkitObjectOutputStream
- */
 package me.newgen.team.util;
 
 import java.io.ByteArrayInputStream;
@@ -22,9 +13,6 @@ public final class Inventories {
     private Inventories() {
     }
 
-    /*
-     * Enabled aggressive exception aggregation
-     */
     public static byte[] toBytes(ItemStack[] items) {
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream();){
             byte[] byArray;
@@ -43,9 +31,6 @@ public final class Inventories {
         }
     }
 
-    /*
-     * Enabled aggressive exception aggregation
-     */
     public static ItemStack[] fromBytes(byte[] data) {
         if (data == null || data.length == 0) {
             return new ItemStack[0];

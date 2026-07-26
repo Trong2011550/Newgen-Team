@@ -6,7 +6,6 @@ import me.newgen.team.model.Team;
 import me.newgen.team.model.TeamMember;
 import me.newgen.team.model.TeamRole;
 import me.newgen.team.model.TeamSettings;
-import me.newgen.team.scheduler.Schedulers;
 import me.newgen.team.util.Json;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
@@ -24,6 +23,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -39,10 +42,28 @@ public final class JdbcStorage implements StorageProvider {
     private final DatabaseSettings settings;
     private HikariDataSource ds;
 
+    /**
+     * Dedicated storage thread: usable during onDisable (unlike the Bukkit
+     * scheduler), keeps writes ordered, and is drained before the pool closes.
+     */
+    private final ExecutorService executor = Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "NewGenTeam-Storage");
+        t.setDaemon(false);
+        return t;
+    });
+
     public JdbcStorage(Logger log, File dataFolder, DatabaseSettings settings) {
         this.log = log;
         this.dataFolder = dataFolder;
         this.settings = settings;
+    }
+
+    private void submit(CompletableFuture<?> future, Runnable task) {
+        try {
+            executor.execute(task);
+        } catch (RejectedExecutionException e) {
+            future.completeExceptionally(e);
+        }
     }
 
     private boolean isMySqlFamily() {
@@ -53,7 +74,7 @@ public final class JdbcStorage implements StorageProvider {
     @Override
     public CompletableFuture<Void> init() {
         CompletableFuture<Void> future = new CompletableFuture<>();
-        Schedulers.async(() -> {
+        submit(future, () -> {
             try {
                 HikariConfig cfg = new HikariConfig();
                 cfg.setPoolName("NewGenTeam-" + settings.type().name());
@@ -107,7 +128,7 @@ public final class JdbcStorage implements StorageProvider {
             st.execute("CREATE TABLE IF NOT EXISTS teams ("
                     + "id VARCHAR(36) PRIMARY KEY,"
                     + "name VARCHAR(64) NOT NULL,"
-                    + "tag VARCHAR(16),"
+                    + "tag VARCHAR(64),"
                     + "leader_uuid VARCHAR(36) NOT NULL,"
                     + "created_at BIGINT NOT NULL,"
                     + "tier INTEGER NOT NULL DEFAULT 1,"
@@ -157,8 +178,11 @@ public final class JdbcStorage implements StorageProvider {
             } else {
                 st.execute("CREATE INDEX IF NOT EXISTS " + name + " ON " + table + "(" + cols + ")");
             }
-        } catch (SQLException ignored) {
-            // index already exists
+        } catch (SQLException e) {
+            // 1061 = duplicate index name, expected on restart.
+            if (!isMySqlFamily() || e.getErrorCode() != 1061) {
+                log.log(Level.WARNING, "Could not create index " + name + " on " + table, e);
+            }
         }
     }
 
@@ -193,7 +217,7 @@ public final class JdbcStorage implements StorageProvider {
     @Override
     public CompletableFuture<Collection<Team>> loadAllTeams() {
         CompletableFuture<Collection<Team>> future = new CompletableFuture<>();
-        Schedulers.async(() -> {
+        submit(future, () -> {
             try (Connection c = ds.getConnection()) {
                 Map<UUID, Team> teams = new HashMap<>();
                 try (Statement st = c.createStatement();
@@ -221,7 +245,7 @@ public final class JdbcStorage implements StorageProvider {
                             t.namedHomes().putAll(Json.readNamedHomes(namedJson));
                         }
                         if (t.home() != null && t.namedHomes().isEmpty()) {
-                            t.namedHomes().put("Mặc định", t.home());
+                            t.namedHomes().put(me.newgen.team.service.HomeService.DEFAULT_HOME_KEY, t.home());
                         }
                         teams.put(id, t);
                     }
@@ -235,7 +259,7 @@ public final class JdbcStorage implements StorageProvider {
                         t.addMember(new TeamMember(
                                 UUID.fromString(rs.getString("player_uuid")),
                                 rs.getString("player_name"),
-                                TeamRole.valueOf(rs.getString("role")),
+                                parseRole(rs.getString("role")),
                                 rs.getLong("joined_at")));
                     }
                 }
@@ -245,9 +269,10 @@ public final class JdbcStorage implements StorageProvider {
                         UUID tid = UUID.fromString(rs.getString("team_id"));
                         Team t = teams.get(tid);
                         if (t == null) continue;
+                        Team.RelationType rel = parseRelation(rs.getString("type"));
+                        if (rel == null) continue;
                         t.relations().put(
-                                UUID.fromString(rs.getString("other_team_id")),
-                                Team.RelationType.valueOf(rs.getString("type")));
+                                UUID.fromString(rs.getString("other_team_id")), rel);
                     }
                 }
                 future.complete(teams.values());
@@ -278,7 +303,7 @@ public final class JdbcStorage implements StorageProvider {
         final List<TeamMember> memberSnapshot = new ArrayList<>(team.members());
         final Map<UUID, Team.RelationType> relSnapshot = new HashMap<>(team.relations());
 
-        Schedulers.async(() -> {
+        submit(future, () -> {
             try (Connection c = ds.getConnection()) {
                 c.setAutoCommit(false);
                 try {
@@ -334,7 +359,8 @@ public final class JdbcStorage implements StorageProvider {
                     }
                     c.commit();
                     future.complete(null);
-                } catch (SQLException e) {
+                } catch (Exception e) {
+                    // setAutoCommit(true) would commit an open transaction.
                     c.rollback();
                     throw e;
                 } finally {
@@ -352,7 +378,7 @@ public final class JdbcStorage implements StorageProvider {
     public CompletableFuture<Void> deleteTeam(UUID teamId) {
         CompletableFuture<Void> future = new CompletableFuture<>();
         final String id = teamId.toString();
-        Schedulers.async(() -> {
+        submit(future, () -> {
             try (Connection c = ds.getConnection()) {
                 c.setAutoCommit(false);
                 try {
@@ -369,7 +395,8 @@ public final class JdbcStorage implements StorageProvider {
                     }
                     c.commit();
                     future.complete(null);
-                } catch (SQLException e) {
+                } catch (Exception e) {
+                    // setAutoCommit(true) would commit an open transaction.
                     c.rollback();
                     throw e;
                 } finally {
@@ -387,7 +414,7 @@ public final class JdbcStorage implements StorageProvider {
     public CompletableFuture<byte[]> loadChest(UUID teamId) {
         CompletableFuture<byte[]> future = new CompletableFuture<>();
         final String id = teamId.toString();
-        Schedulers.async(() -> {
+        submit(future, () -> {
             try (Connection c = ds.getConnection();
                  PreparedStatement ps = c.prepareStatement(
                          "SELECT contents FROM team_chests WHERE team_id=?")) {
@@ -407,7 +434,7 @@ public final class JdbcStorage implements StorageProvider {
     public CompletableFuture<Void> saveChest(UUID teamId, byte[] contents) {
         CompletableFuture<Void> future = new CompletableFuture<>();
         final String id = teamId.toString();
-        Schedulers.async(() -> {
+        submit(future, () -> {
             try (Connection c = ds.getConnection();
                  PreparedStatement ps = c.prepareStatement(upsertChestSql())) {
                 ps.setString(1, id);
@@ -437,7 +464,7 @@ public final class JdbcStorage implements StorageProvider {
         final String target = entry.target() == null ? null : entry.target().toString();
         final String targetName = entry.targetName();
         final String extra = entry.extra();
-        Schedulers.async(() -> {
+        submit(future, () -> {
             try (Connection c = ds.getConnection();
                  PreparedStatement ps = c.prepareStatement(
                          "INSERT INTO team_logs "
@@ -467,7 +494,7 @@ public final class JdbcStorage implements StorageProvider {
         CompletableFuture<List<AuditLog>> future = new CompletableFuture<>();
         final String id = teamId.toString();
         final int cap = Math.max(1, Math.min(limit, 5000));
-        Schedulers.async(() -> {
+        submit(future, () -> {
             try (Connection c = ds.getConnection();
                  PreparedStatement ps = c.prepareStatement(
                          "SELECT * FROM team_logs WHERE team_id=? ORDER BY id DESC LIMIT ?")) {
@@ -502,7 +529,7 @@ public final class JdbcStorage implements StorageProvider {
     public CompletableFuture<Void> deleteLogs(UUID teamId) {
         CompletableFuture<Void> future = new CompletableFuture<>();
         final String id = teamId.toString();
-        Schedulers.async(() -> {
+        submit(future, () -> {
             try (Connection c = ds.getConnection();
                  PreparedStatement ps = c.prepareStatement("DELETE FROM team_logs WHERE team_id=?")) {
                 ps.setString(1, id);
@@ -525,8 +552,38 @@ public final class JdbcStorage implements StorageProvider {
         }
     }
 
+    /** Unknown role values (downgrade, manual edit) fall back to MEMBER instead of failing the whole load. */
+    private TeamRole parseRole(String s) {
+        try {
+            return TeamRole.valueOf(s);
+        } catch (IllegalArgumentException | NullPointerException e) {
+            log.warning("Unknown team role '" + s + "' in team_members; defaulting to MEMBER.");
+            return TeamRole.MEMBER;
+        }
+    }
+
+    /** Unknown relation types are skipped instead of failing the whole load. */
+    private Team.RelationType parseRelation(String s) {
+        try {
+            return Team.RelationType.valueOf(s);
+        } catch (IllegalArgumentException | NullPointerException e) {
+            log.warning("Unknown relation type '" + s + "' in team_relations; skipping row.");
+            return null;
+        }
+    }
+
     @Override
     public void shutdown() {
+        executor.shutdown();
+        try {
+            if (!executor.awaitTermination(30, TimeUnit.SECONDS)) {
+                log.warning("Storage executor did not drain within 30s; forcing shutdown.");
+                executor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            executor.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
         if (ds != null && !ds.isClosed()) ds.close();
     }
 }

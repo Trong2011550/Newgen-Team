@@ -13,16 +13,19 @@
 #    <danger> <success> <warning> <info>
 #  LƯU Ý: token theme dùng như mã màu chuyển tiếp,
 #  KHÔNG cần tag đóng (</primary>).
+#
+#  Palette hiện tại: "Economy Green" - xanh lá chủ đạo,
+#  phong cách emerald/tiền tệ.
 # ============================================================
 theme:
-  # Màu chữ chính (nội dung thông thường)
-  primary: "<#f7c6d9>"
-  # Màu phụ (tiêu đề, nhấn mạnh nhẹ)
-  secondary: "<#f3a9c8>"
-  # Màu nổi bật (tên riêng, số liệu quan trọng)
-  accent: "<#ffd6e7>"
-  # Màu mờ (chú thích, thông tin phụ)
-  muted: "<#d8b8c6>"
+  # Màu chữ chính (nội dung thông thường) - xanh lá tươi
+  primary: "<#b7f0c0>"
+  # Màu phụ (tiêu đề, nhấn mạnh nhẹ) - xanh emerald đậm
+  secondary: "<#8fd6a0>"
+  # Màu nổi bật (tên riêng, số liệu quan trọng) - xanh bạc hà sáng
+  accent: "<#d9f7e0>"
+  # Màu mờ (chú thích, thông tin phụ) - xanh xám dịu
+  muted: "<#a3b8a9>"
   # Màu lỗi / hành động nguy hiểm
   danger: "<red>"
   # Màu thành công

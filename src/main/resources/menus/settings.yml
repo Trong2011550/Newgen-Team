@@ -1,0 +1,43 @@
+# ============================================================
+#  NewGen Team - menus/settings.yml
+#  Tùy chỉnh giao diện menu cài đặt team.
+#  Chỉ cần ghi đè những gì bạn muốn đổi - key nào thiếu sẽ dùng
+#  giá trị mặc định của plugin. Text lấy từ lang/*.yml (gui.settings.*).
+#  Layout overrides for the team settings menu.
+#  Override only what you want to change - missing keys fall back
+#  to the plugin defaults. All text comes from lang/*.yml (gui.settings.*).
+# ============================================================
+
+# Tiêu đề menu. Hỗ trợ MiniMessage + token theme (<primary>, <accent>...).
+# Menu title. Supports MiniMessage + theme tokens (<primary>, <accent>...).
+#title: "<primary>Cài đặt team"
+
+# Số hàng của menu (1-6). Mặc định: 5.
+# Menu rows (1-6). Default: 5.
+#rows: 5
+
+# Mỗi item nhận: slot, material, glow, custom-model-data, enabled (xem menus/main.yml).
+# Lưu ý: material của toggle bị bỏ qua - icon LIME_DYE/GRAY_DYE thể hiện trạng thái bật/tắt.
+# Each item accepts: slot, material, glow, custom-model-data, enabled (see menus/main.yml).
+# Note: toggle material is ignored - LIME_DYE/GRAY_DYE reflects the on/off state.
+items:
+  open-team:
+    slot: 10
+  friendly-fire:
+    slot: 11
+  team-chat:
+    slot: 12
+  auto-accept:
+    slot: 13
+  public-join:
+    slot: 19
+  join-notify:
+    slot: 20
+  ally-requests:
+    slot: 21
+  back:
+    slot: 40
+    material: ARROW
+  close:
+    slot: 44
+    material: BARRIER

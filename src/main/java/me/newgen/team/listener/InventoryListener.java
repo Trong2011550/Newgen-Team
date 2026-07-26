@@ -29,7 +29,7 @@ public final class InventoryListener implements Listener {
         if (holder instanceof MenuHolder mh) {
             event.setCancelled(true);
             Menu menu = mh.menu();
-            if (menu != null && !menu.allowItemMovement()) {
+            if (menu != null) {
                 menu.handleClick(event);
             }
             return;
@@ -64,11 +64,17 @@ public final class InventoryListener implements Listener {
             return true;
         }
 
+        if (topClicked && slot >= plugin.chests().storageSlotsOnPage(team, ch.page())) {
+            // Locked (beyond-tier) slot: filler only.
+            event.setCancelled(true);
+            return true;
+        }
+
         if (!topClicked && event.getAction() == org.bukkit.event.inventory.InventoryAction.MOVE_TO_OTHER_INVENTORY) {
             org.bukkit.inventory.ItemStack moving = event.getCurrentItem();
             if (moving != null && !moving.getType().isAir()) {
                 org.bukkit.inventory.Inventory top = event.getView().getTopInventory();
-                if (!canAbsorbInStorage(top, moving)) {
+                if (!canAbsorbInStorage(top, moving, plugin.chests().storageSlotsOnPage(team, ch.page()))) {
 
                     event.setCancelled(true);
                     me.newgen.team.util.Sounds.error(player);
@@ -79,8 +85,8 @@ public final class InventoryListener implements Listener {
         return false;
     }
 
-    private boolean canAbsorbInStorage(org.bukkit.inventory.Inventory top, org.bukkit.inventory.ItemStack moving) {
-        for (int i = 0; i < ChestService.NAV_ROW_START; i++) {
+    private boolean canAbsorbInStorage(org.bukkit.inventory.Inventory top, org.bukkit.inventory.ItemStack moving, int storageSlots) {
+        for (int i = 0; i < storageSlots; i++) {
             org.bukkit.inventory.ItemStack it = top.getItem(i);
             if (it == null || it.getType().isAir()) return true;
             if (it.getAmount() < it.getMaxStackSize() && it.isSimilar(moving)) return true;
@@ -96,10 +102,18 @@ public final class InventoryListener implements Listener {
                 && event.getClickedInventory().equals(event.getView().getTopInventory());
 
         switch (event.getAction()) {
-            case PLACE_ALL, PLACE_ONE, PLACE_SOME, SWAP_WITH_CURSOR -> {
+            case PLACE_ALL, PLACE_ONE, PLACE_SOME -> {
                 if (topClicked && !canDeposit) { deny(event, player); }
             }
+            case SWAP_WITH_CURSOR -> {
+                // A swap is a deposit and a withdrawal at once.
+                if (topClicked && !(canDeposit && canWithdraw)) { deny(event, player); }
+            }
             case PICKUP_ALL, PICKUP_HALF, PICKUP_ONE, PICKUP_SOME -> {
+                if (topClicked && !canWithdraw) { deny(event, player); }
+            }
+            case DROP_ONE_SLOT, DROP_ALL_SLOT -> {
+                // Dropping from a chest slot is effectively a withdrawal.
                 if (topClicked && !canWithdraw) { deny(event, player); }
             }
             case MOVE_TO_OTHER_INVENTORY -> {
@@ -112,6 +126,9 @@ public final class InventoryListener implements Listener {
             }
             case HOTBAR_SWAP, HOTBAR_MOVE_AND_READD -> {
                 if (topClicked && !(canWithdraw && canDeposit)) deny(event, player);
+            }
+            case UNKNOWN -> {
+                if (topClicked) deny(event, player);
             }
             default -> {}
         }
@@ -134,8 +151,9 @@ public final class InventoryListener implements Listener {
             if (team == null) { event.setCancelled(true); return; }
             int topSize = event.getView().getTopInventory().getSize();
 
+            int storageSlots = plugin.chests().storageSlotsOnPage(team, ch.page());
             boolean touchesNav = event.getRawSlots().stream()
-                    .anyMatch(s -> s < topSize && s >= ChestService.NAV_ROW_START);
+                    .anyMatch(s -> s < topSize && s >= storageSlots);
             if (touchesNav) {
                 event.setCancelled(true);
                 me.newgen.team.util.Sounds.error(player);

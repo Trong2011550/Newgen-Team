@@ -1,6 +1,3 @@
-/*
- * Decompiled with CFR 0.152.
- */
 package me.newgen.team.model;
 
 import me.newgen.team.model.AuditAction;

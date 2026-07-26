@@ -1,0 +1,20 @@
+# ============================================================
+#  NewGen Team - hooks.yml
+#  Bật/tắt tích hợp với các plugin khác. Đặt false để plugin
+#  KHÔNG hook vào plugin đó dù nó có cài trên server.
+#  Enable/disable integrations with other plugins. Set false to
+#  skip hooking even when the target plugin is installed.
+# ============================================================
+
+hooks:
+  # Vault - kinh tế cho ngân hàng team.
+  # Vault - economy backend for the team bank.
+  vault: true
+
+  # PlayerPoints - tiền tệ dùng để nâng cấp tier.
+  # PlayerPoints - currency used for tier upgrades.
+  playerpoints: true
+
+  # PlaceholderAPI - cung cấp placeholder %newgenteam_*%.
+  # PlaceholderAPI - exposes the %newgenteam_*% placeholders.
+  placeholderapi: true

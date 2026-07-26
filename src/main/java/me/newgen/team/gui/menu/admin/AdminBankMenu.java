@@ -53,7 +53,7 @@ public final class AdminBankMenu extends Menu {
                 .name(L("gui.admin.bank.set"))
                 .lore(L("gui.admin.bank.set-lore"), L("gui.common.type-amount")).build(),
                 e -> { Sounds.click(viewer); prompt("set"); });
-        set(15, ItemBuilder.of(Material.PINK_DYE)
+        set(15, ItemBuilder.of(Material.LIME_DYE)
                 .name(L("gui.admin.bank.remove"))
                 .lore(L("gui.admin.bank.remove-lore"), L("gui.common.type-amount")).build(),
                 e -> { Sounds.click(viewer); prompt("remove"); });
@@ -71,8 +71,15 @@ public final class AdminBankMenu extends Menu {
             if (in == null || in.isBlank()) { reopen(); return; }
             long amount;
             try {
-                amount = Long.parseLong(in.trim());
+                amount = Long.parseLong(in.trim().replace(",", "").replace(" ", "").replace("_", ""));
             } catch (NumberFormatException ex) {
+                Sounds.error(viewer);
+                plugin.messages().send(viewer, "admin.invalid-number");
+                reopen();
+                return;
+            }
+            if (amount == Long.MIN_VALUE) {
+                // Math.abs(Long.MIN_VALUE) stays negative.
                 Sounds.error(viewer);
                 plugin.messages().send(viewer, "admin.invalid-number");
                 reopen();
@@ -92,8 +99,8 @@ public final class AdminBankMenu extends Menu {
 
     private void report(AdminService.AdminResult r) {
         if (r.ok()) Sounds.success(viewer); else Sounds.error(viewer);
-        viewer.sendMessage(me.newgen.team.util.Text.legacy(plugin.messages().prefix()
-                + (r.ok() ? "&#f7c6d9" : "&#f3a9c8") + r.message()));
+        viewer.sendMessage(me.newgen.team.util.Text.mini(plugin.messages().prefix())
+                .append(me.newgen.team.util.Text.legacy((r.ok() ? "&#b7f0c0" : "&#ff5555") + r.message())));
     }
 
     private void back() { new AdminTeamDetailMenu(plugin, viewer, teamId).open(); }

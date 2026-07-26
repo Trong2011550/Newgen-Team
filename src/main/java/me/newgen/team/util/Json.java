@@ -62,8 +62,8 @@ public final class Json {
             TeamHome h = e.getValue();
             if (h == null) continue;
             if (sb.length() > 0) sb.append('\n');
-            sb.append(e.getKey()).append('\u001f')
-              .append(h.world).append('\u001f')
+            sb.append(clean(e.getKey())).append('\u001f')
+              .append(clean(h.world)).append('\u001f')
               .append(h.x).append('\u001f')
               .append(h.y).append('\u001f')
               .append(h.z).append('\u001f')
@@ -98,6 +98,12 @@ public final class Json {
         return out;
     }
 
+    /** Strips record/field delimiter characters from user-supplied text. */
+    private static String clean(String s) {
+        if (s == null) return "";
+        return s.replace('\n', ' ').replace('\r', ' ').replace((char) 0x1F, ' ');
+    }
+
     private static boolean bool(String json, String key, boolean def) {
         String k = "\"" + key + "\":";
         int i = json.indexOf(k);
@@ -122,9 +128,20 @@ public final class Json {
         int i = json.indexOf(k);
         if (i < 0) return null;
         i += k.length();
-        int j = json.indexOf('"', i);
-        if (j < 0) return null;
-        return unescape(json.substring(i, j));
+        // Find the closing quote, skipping escaped characters.
+        int j = i;
+        while (j < json.length()) {
+            char ch = json.charAt(j);
+            if (ch == '\\') {
+                j += 2;
+                continue;
+            }
+            if (ch == '"') {
+                return unescape(json.substring(i, j));
+            }
+            j++;
+        }
+        return null;
     }
 
     private static String escape(String s) {

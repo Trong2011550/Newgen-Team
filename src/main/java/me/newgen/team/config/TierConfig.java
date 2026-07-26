@@ -49,6 +49,20 @@ public final class TierConfig {
             loaded.add(new Tier(level, Math.max(9, slots), members, homes, price));
             level++;
         }
+        // Tier keys must be contiguous from 1; keys after a gap are ignored.
+        int defined = 0;
+        for (String key : section.getKeys(false)) {
+            try {
+                Integer.parseInt(key);
+                defined++;
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        if (defined > loaded.size()) {
+            org.bukkit.Bukkit.getLogger().warning("[NewGenTeam] levels.yml defines " + defined
+                    + " tiers but they are not contiguous from 1; only " + loaded.size()
+                    + " tier(s) were loaded.");
+        }
         this.tiers = loaded.isEmpty() ? defaults() : loaded;
     }
 

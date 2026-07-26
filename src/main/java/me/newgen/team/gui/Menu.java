@@ -32,6 +32,9 @@ public abstract class Menu {
 
     protected abstract void build();
 
+    /** Set via abort() when the menu should close instead of open. */
+    private boolean aborted;
+
     public void open() {
         Schedulers.entity(viewer, () -> {
             if (inventory == null) {
@@ -39,12 +42,20 @@ public abstract class Menu {
                 holder.setInventory(inventory);
             }
             refresh();
+            if (aborted) return;
             viewer.openInventory(inventory);
             Sounds.open(viewer);
         });
     }
 
+    /** Closes the menu instead of showing it, e.g. when the viewer's team is gone. */
+    protected void abort() {
+        aborted = true;
+        viewer.closeInventory();
+    }
+
     public void refresh() {
+        aborted = false;
         handlers.clear();
         if (inventory != null) inventory.clear();
         build();
@@ -58,19 +69,20 @@ public abstract class Menu {
 
     protected void set(int slot, ItemStack item, Consumer<InventoryClickEvent> onClick) {
         set(slot, item);
-        if (onClick != null) handlers.put(slot, onClick);
+        // Handlers outside the menu bounds would target the viewer's own inventory.
+        if (onClick != null && inventory != null && slot >= 0 && slot < inventory.getSize()) {
+            handlers.put(slot, onClick);
+        }
     }
 
     public boolean handleClick(InventoryClickEvent event) {
+        // A refresh may have shifted elements between the two clicks of a double-click.
+        if (event.getClick() == ClickType.DOUBLE_CLICK) return false;
         Consumer<InventoryClickEvent> handler = handlers.get(event.getRawSlot());
         if (handler != null) {
             handler.accept(event);
             return true;
         }
-        return false;
-    }
-
-    public boolean allowItemMovement() {
         return false;
     }
 

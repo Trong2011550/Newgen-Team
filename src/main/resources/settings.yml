@@ -25,3 +25,12 @@ stats:
   # Có đếm kill/death của thành viên cho bảng xếp hạng hay không.
   # Whether to track member kills/deaths for leaderboards.
   track-kills: true
+
+chat:
+  # Định dạng tin nhắn chat team (mã màu legacy &). Placeholder: %tag%, %team%, %player%, %message%.
+  # Team chat message format (legacy & color codes). Placeholders: %tag%, %team%, %player%, %message%.
+  team-format: "&d[%tag%] &7%player%&8: &f%message%"
+
+  # Ghi chat team ra console để staff giám sát.
+  # Mirror team chat to the server console so staff can moderate it.
+  log-to-console: true

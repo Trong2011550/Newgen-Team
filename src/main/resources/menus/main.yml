@@ -1,10 +1,10 @@
 # ============================================================
 #  NewGen Team - menus/main.yml
 #  Tùy chỉnh giao diện menu chính (/team).
-#  Chỉ cần ghi đè những gì bạn muốn đổi — key nào thiếu sẽ dùng
+#  Chỉ cần ghi đè những gì bạn muốn đổi - key nào thiếu sẽ dùng
 #  giá trị mặc định của plugin. Text lấy từ lang/*.yml (gui.main.*).
 #  Layout overrides for the main menu (/team).
-#  Override only what you want to change — missing keys fall back
+#  Override only what you want to change - missing keys fall back
 #  to the plugin defaults. All text comes from lang/*.yml (gui.main.*).
 # ============================================================
 

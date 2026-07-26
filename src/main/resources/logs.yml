@@ -1,0 +1,32 @@
+# ============================================================
+#  NewGen Team - logs.yml
+#  Cấu hình ghi log ra file. Log được ghi vào
+#  plugins/NewGenTeam/logs/<loại>/<yyyy-MM-dd>.log
+#  File logging configuration. Logs are written to
+#  plugins/NewGenTeam/logs/<category>/<yyyy-MM-dd>.log
+# ============================================================
+
+logs:
+  # Bật/tắt toàn bộ ghi log ra file.
+  # Master switch for file logging.
+  enabled: true
+
+  # Log hoạt động chung theo ngày (tạo/giải tán team, join/leave...).
+  # Daily general activity log (team create/disband, join/leave...).
+  daily: true
+
+  # Log lỗi (storage, hook...).
+  # Error log (storage, hooks...).
+  errors: true
+
+  # Log giao dịch ngân hàng team (nạp/rút).
+  # Team bank transaction log (deposit/withdraw).
+  transactions: true
+
+  # Log hành động của admin (/team admin, /team reload...).
+  # Admin action log (/team admin, /team reload...).
+  admin: true
+
+# Debug mode: in thêm chi tiết chẩn đoán vào console + logs/daily.
+# Debug mode: prints extra diagnostics to console + logs/daily.
+debug: false

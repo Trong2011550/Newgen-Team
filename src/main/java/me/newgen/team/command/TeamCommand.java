@@ -51,6 +51,7 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
                 return true;
             }
             plugin.reload();
+            plugin.logs().admin("RELOAD by " + sender.getName());
             plugin.messages().send(sender, "general.reloaded");
             return true;
         }
@@ -180,10 +181,13 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
     }
 
     private UUID resolveInviteTarget(String[] args, java.util.Set<UUID> options) {
-        if (options.size() == 1) return options.iterator().next();
-        if (args.length < 2) return null;
-        Team t = plugin.teams().byName(args[1]);
-        return (t != null && options.contains(t.id())) ? t.id() : null;
+        if (args.length >= 2) {
+            // Joined so multi-word team names resolve.
+            String name = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
+            Team t = plugin.teams().byName(name);
+            return (t != null && options.contains(t.id())) ? t.id() : null;
+        }
+        return options.size() == 1 ? options.iterator().next() : null;
     }
 
     private void handleLeave(Player p) {
@@ -203,11 +207,21 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
         if (args.length < 2) { plugin.messages().send(p, "command.kick-usage"); return; }
         Team team = plugin.teams().byPlayer(p.getUniqueId());
         if (team == null) { plugin.messages().send(p, "team.not-in"); return; }
-        var target = Bukkit.getOfflinePlayer(args[1]);
-        TeamService.Result r = plugin.teams().kick(team, p.getUniqueId(), target.getUniqueId());
+        if (!plugin.permissions().has(team, p.getUniqueId(),
+                me.newgen.team.permission.TeamPermission.KICK_MEMBER)) {
+            plugin.messages().send(p, "general.no-permission"); return;
+        }
+        // Resolved from the roster; getOfflinePlayer(name) can block on a profile lookup.
+        java.util.UUID targetId = null;
+        for (me.newgen.team.model.TeamMember m : team.members()) {
+            if (m.name() != null && m.name().equalsIgnoreCase(args[1])) { targetId = m.uuid(); break; }
+        }
+        if (targetId == null) { plugin.messages().send(p, "general.player-not-found"); return; }
+        final java.util.UUID target = targetId;
+        TeamService.Result r = plugin.teams().kick(team, p.getUniqueId(), target);
         switch (r) {
             case SUCCESS -> { plugin.messages().send(p, "member.kicked", "player", args[1]);
-                plugin.chat().clear(target.getUniqueId());
+                plugin.chat().clear(target);
                 plugin.chat().notifyTeam(team, "notify.kicked", "player", p.getName(), "target", args[1]); }
             case NO_PERMISSION -> plugin.messages().send(p, "general.no-permission");
             case CANNOT_TARGET_SELF -> plugin.messages().send(p, "member.cannot-target-self");
@@ -243,6 +257,12 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
     }
 
     private void handleChat(Player p, String[] args) {
+        Team team = plugin.teams().byPlayer(p.getUniqueId());
+        if (team == null) { plugin.messages().send(p, "team.not-in"); return; }
+        if (!plugin.permissions().has(team, p.getUniqueId(),
+                me.newgen.team.permission.TeamPermission.TOGGLE_TEAM_CHAT)) {
+            plugin.messages().send(p, "general.no-permission"); return;
+        }
         if (args.length >= 2) {
             String msg = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
             if (!plugin.chat().sendTeamMessage(p, msg)) plugin.messages().send(p, "team.not-in");
@@ -259,7 +279,11 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
                 me.newgen.team.permission.TeamPermission.SET_HOME)) {
             plugin.messages().send(p, "general.no-permission"); return;
         }
-        plugin.homes().setHome(team, p.getLocation(), plugin.teams());
+        var r = plugin.homes().setHome(team, p.getLocation(), plugin.tiers().homeLimit(team));
+        if (r == me.newgen.team.service.HomeService.SetResult.LIMIT_REACHED) {
+            plugin.messages().send(p, "home.limit-reached");
+            return;
+        }
         plugin.messages().send(p, "home.set");
     }
 

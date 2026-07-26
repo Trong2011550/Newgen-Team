@@ -18,6 +18,7 @@ import me.newgen.team.permission.PermissionManager;
 import me.newgen.team.scheduler.Schedulers;
 import me.newgen.team.service.AdminService;
 import me.newgen.team.service.AuditLogService;
+import me.newgen.team.service.LogService;
 import me.newgen.team.service.ChatService;
 import me.newgen.team.service.SignInputService;
 import me.newgen.team.service.ChestService;
@@ -31,11 +32,18 @@ import me.newgen.team.storage.DatabaseSettings;
 import me.newgen.team.storage.JdbcStorage;
 import me.newgen.team.storage.StorageProvider;
 import com.github.retrooper.packetevents.PacketEvents;
+import org.bstats.bukkit.Metrics;
 import io.github.retrooper.packetevents.factory.spigot.SpigotPacketEventsBuilder;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class NewGenTeamPlugin extends JavaPlugin {
+
+    /** bStats plugin id: https://bstats.org/plugin/bukkit/NewGenTeam */
+    private static final int BSTATS_PLUGIN_ID = 32387;
+
+    private Metrics metrics;
+    private volatile long lastChestFlush = System.currentTimeMillis();
 
     private ConfigManager configManager;
     private ThemeManager themeManager;
@@ -59,6 +67,7 @@ public final class NewGenTeamPlugin extends JavaPlugin {
     private SignInputService signInputService;
     private AuditLogService auditLogService;
     private AdminService adminService;
+    private LogService logService;
 
     private MenuLayoutManager menuLayoutManager;
     private MenuManager menuManager;
@@ -81,23 +90,31 @@ public final class NewGenTeamPlugin extends JavaPlugin {
 
         me.newgen.team.gui.Icons.init(messageManager);
 
-        this.pointsHook = new VaultHook(getLogger());
-        pointsHook.hook();
-        this.playerPointsHook = new PlayerPointsHook(getLogger());
-        playerPointsHook.hook();
+        this.logService = new LogService(getLogger(), configManager, getDataFolder());
 
-        this.storage = new JdbcStorage(getLogger(), getDataFolder(),
-                new DatabaseSettings(configManager.database()));
+        this.pointsHook = new VaultHook(getLogger());
+        if (configManager.hookEnabled("vault")) pointsHook.hook(); else getLogger().info("Vault hook disabled in hooks.yml.");
+        this.playerPointsHook = new PlayerPointsHook(getLogger());
+        if (configManager.hookEnabled("playerpoints")) playerPointsHook.hook(); else getLogger().info("PlayerPoints hook disabled in hooks.yml.");
+
+        DatabaseSettings dbSettings = new DatabaseSettings(configManager.database());
+        this.storage = new JdbcStorage(getLogger(), getDataFolder(), dbSettings);
 
         this.permissionManager = new PermissionManager();
         this.teamService = new TeamService(storage);
         teamService.configure(configManager.maxNameLength(), configManager.maxTagLength(),
                 configManager.maxMembers(), configManager.inviteTtlSeconds());
+        teamService.setLogs(logService);
         this.chestService = new ChestService(getLogger(), storage, configManager.chestConfig());
+        teamService.setChests(chestService);
         this.tierService = new TierService(configManager, playerPointsHook, chestService, storage);
         teamService.setTiers(tierService);
+        tierService.setTeams(teamService);
         this.homeService = new HomeService(configManager, storage);
+        homeService.setTeams(teamService);
         this.chatService = new ChatService(teamService, messageManager);
+        chatService.setFormat(configManager.teamChatFormat());
+        chatService.setLogToConsole(configManager.teamChatLogToConsole());
         this.statsService = new StatsService(teamService, storage);
         this.relationService = new RelationService(teamService, storage);
         this.searchManager = new SearchManager(teamService);
@@ -131,7 +148,9 @@ public final class NewGenTeamPlugin extends JavaPlugin {
         });
 
         this.placeholderHook = new PlaceholderHook(this, teamService);
-        if (placeholderHook.tryRegister()) {
+        if (!configManager.hookEnabled("placeholderapi")) {
+            getLogger().info("PlaceholderAPI hook disabled in hooks.yml.");
+        } else if (placeholderHook.tryRegister()) {
             getLogger().info("Hooked into PlaceholderAPI.");
         }
 
@@ -148,19 +167,57 @@ public final class NewGenTeamPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new ChatListener(this), this);
         getServer().getPluginManager().registerEvents(new JoinQuitListener(this), this);
         getServer().getPluginManager().registerEvents(new CombatListener(this), this);
+        getServer().getPluginManager().registerEvents(new me.newgen.team.listener.MoveListener(this), this);
 
-        long flush = Math.max(30, configManager.chestFlushIntervalSeconds());
-        Schedulers.asyncRepeating(() -> chestService.flushAll(), flush, flush);
+        // Heartbeat reads the interval live so /team reload applies it without a restart.
+        Schedulers.asyncRepeating(() -> {
+            long now = System.currentTimeMillis();
+            long interval = Math.max(30, configManager.chestFlushIntervalSeconds()) * 1000L;
+            if (now - lastChestFlush >= interval) {
+                lastChestFlush = now;
+                chestService.flushAll();
+            }
+        }, 30, 30);
 
-        getLogger().info("NewGen Team enabled (Folia=" + Schedulers.isFolia() + ").");
+        // Expired invites, join requests, ally requests and cooldowns.
+        Schedulers.asyncRepeating(() -> {
+            teamService.sweepExpired();
+            homeService.sweepExpired();
+            relationService.sweepExpired();
+        }, 60, 60);
+
+        if (BSTATS_PLUGIN_ID > 0) {
+            this.metrics = new Metrics(this, BSTATS_PLUGIN_ID);
+        } else {
+            getLogger().warning("bStats disabled: set BSTATS_PLUGIN_ID after registering the plugin at bstats.org.");
+        }
+
+        String software = Schedulers.isFolia() ? "Folia" : getServer().getName();
+        var console = getComponentLogger();
+        String[] banner = {
+                " _   _                   ____              ",
+                "| \\ | |  ___ __      __ / ___|  ___  _ __  ",
+                "|  \\| | / _ \\\\ \\ /\\ / /| |  _  / _ \\| '_ \\ ",
+                "| |\\  ||  __/ \\ V  V / | |_| ||  __/| | | |",
+                "|_| \\_| \\___|  \\_/\\_/   \\____| \\___||_| |_|",
+                "                S T U D I O                "
+        };
+        for (String line : banner) {
+            console.info(net.kyori.adventure.text.Component.text(line, net.kyori.adventure.text.format.NamedTextColor.GREEN));
+        }
+        console.info(net.kyori.adventure.text.Component.text("Discord: https://discord.gg/twKAP7JjW", net.kyori.adventure.text.format.NamedTextColor.DARK_GREEN));
+        console.info(net.kyori.adventure.text.Component.text("Server: " + software + " " + getServer().getMinecraftVersion(), net.kyori.adventure.text.format.NamedTextColor.DARK_GREEN));
+        console.info(net.kyori.adventure.text.Component.text("Database: " + dbSettings.type(), net.kyori.adventure.text.format.NamedTextColor.DARK_GREEN));
     }
 
     @Override
     public void onDisable() {
 
+        if (metrics != null) metrics.shutdown();
         if (chestService != null) chestService.saveAllOnShutdown();
         if (teamService != null) teamService.saveAll();
         if (storage != null) storage.shutdown();
+        if (logService != null) logService.shutdown();
         try {
             if (PacketEvents.getAPI() != null) PacketEvents.getAPI().terminate();
         } catch (Exception ignored) {
@@ -177,6 +234,8 @@ public final class NewGenTeamPlugin extends JavaPlugin {
         menuLayoutManager.load();
         teamService.configure(configManager.maxNameLength(), configManager.maxTagLength(),
                 configManager.maxMembers(), configManager.inviteTtlSeconds());
+        chatService.setFormat(configManager.teamChatFormat());
+        chatService.setLogToConsole(configManager.teamChatLogToConsole());
     }
 
     public ConfigManager config() { return configManager; }
@@ -197,6 +256,7 @@ public final class NewGenTeamPlugin extends JavaPlugin {
     public SignInputService signInput() { return signInputService; }
     public AuditLogService auditLogs() { return auditLogService; }
     public AdminService admin() { return adminService; }
+    public LogService logs() { return logService; }
     public MenuLayoutManager menuLayouts() { return menuLayoutManager; }
     public MenuManager menus() { return menuManager; }
 }

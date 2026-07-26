@@ -10,3 +10,7 @@ build/
 # OS
 Thumbs.db
 .DS_Store
+
+# Local working notes
+noob.md
+.noob/

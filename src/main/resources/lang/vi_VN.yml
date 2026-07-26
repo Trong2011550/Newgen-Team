@@ -91,6 +91,7 @@ home:
 chat:
   enabled: "<primary>Đã bật chat team. Tin nhắn của bạn sẽ gửi cho đồng đội."
   disabled: "<accent>Đã tắt chat team."
+  team-disabled: "<danger>Chat team đang bị tắt trong cài đặt của team."
 
 relation:
   ally-set: "<primary>Bạn đã liên minh với team <accent>%team%<primary>."

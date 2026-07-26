@@ -181,8 +181,8 @@ public final class AdminMemberMenu extends PaginatedMenu<TeamMember> {
 
     private void report(AdminService.AdminResult r) {
         if (r.ok()) Sounds.success(viewer); else Sounds.error(viewer);
-        viewer.sendMessage(me.newgen.team.util.Text.legacy(plugin.messages().prefix()
-                + (r.ok() ? "&#f7c6d9" : "&#f3a9c8") + r.message()));
+        viewer.sendMessage(me.newgen.team.util.Text.mini(plugin.messages().prefix())
+                .append(me.newgen.team.util.Text.legacy((r.ok() ? "&#b7f0c0" : "&#ff5555") + r.message())));
     }
 
     private void reopen() { new AdminMemberMenu(plugin, viewer, teamId, page).open(); }

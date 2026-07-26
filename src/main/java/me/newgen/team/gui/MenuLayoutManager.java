@@ -81,7 +81,7 @@ public final class MenuLayoutManager {
         layouts.clear();
         File dir = new File(plugin.getDataFolder(), "menus");
         // Copy bundled defaults so admins have a documented template to edit.
-        for (String bundled : new String[]{"main"}) {
+        for (String bundled : new String[]{"main", "bank", "settings", "confirm"}) {
             if (!new File(dir, bundled + ".yml").exists()) {
                 plugin.saveResource("menus/" + bundled + ".yml", false);
             }

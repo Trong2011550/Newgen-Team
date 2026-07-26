@@ -17,10 +17,10 @@ public final class ThemeManager {
 
     private static final Map<String, String> DEFAULTS = new LinkedHashMap<>();
     static {
-        DEFAULTS.put("primary", "<#f7c6d9>");
-        DEFAULTS.put("secondary", "<#f3a9c8>");
-        DEFAULTS.put("accent", "<#ffd6e7>");
-        DEFAULTS.put("muted", "<#d8b8c6>");
+        DEFAULTS.put("primary", "<#b7f0c0>");
+        DEFAULTS.put("secondary", "<#8fd6a0>");
+        DEFAULTS.put("accent", "<#d9f7e0>");
+        DEFAULTS.put("muted", "<#a3b8a9>");
         DEFAULTS.put("danger", "<red>");
         DEFAULTS.put("success", "<green>");
         DEFAULTS.put("warning", "<yellow>");

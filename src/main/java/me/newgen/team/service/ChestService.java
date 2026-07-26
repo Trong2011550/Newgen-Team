@@ -52,8 +52,13 @@ public final class ChestService {
     private static final class TeamChestData {
         final Team team;
         final List<Inventory> pages = new ArrayList<>();
+        /** Storage slots per page at build time; snapshots use this, not the current tier. */
+        final List<Integer> pageStorageSlots = new ArrayList<>();
+        /** Items beyond the current capacity, retained until capacity returns. */
+        final List<ItemStack> overflow = new ArrayList<>();
         int viewers = 0;
-        boolean dirty = false;
+        // Read without the lock by flushAll's pre-check.
+        volatile boolean dirty = false;
 
         TeamChestData(Team team) {
             this.team = team;
@@ -133,9 +138,18 @@ public final class ChestService {
                     inv.setItem(i, stored[globalIndex]);
                 }
             }
+            // Fill locked (beyond-tier) slots so items cannot be placed there.
+            for (int i = storageThisPage; i < NAV_ROW_START; i++) {
+                inv.setItem(i, me.newgen.team.gui.Icons.edgeFiller());
+            }
 
             decorateNav(inv, p, pageCount);
             d.pages.add(inv);
+            d.pageStorageSlots.add(storageThisPage);
+        }
+        // Items beyond the current capacity are kept, not deleted.
+        for (int gi = totalSlots; gi < stored.length; gi++) {
+            if (stored[gi] != null) d.overflow.add(stored[gi]);
         }
         return d;
     }
@@ -174,8 +188,8 @@ public final class ChestService {
             d.dirty = true;
             if (d.viewers == 0) {
                 byte[] blob = snapshot(d);
+                d.dirty = false; // already saved here; skip the next flushAll pass
                 storage.saveChest(teamId, blob);
-
             }
         } finally {
             team.chestLock.unlock();
@@ -187,13 +201,26 @@ public final class ChestService {
         if (d != null) d.dirty = true;
     }
 
+    /** Number of usable storage slots on the given page for this team's tier. */
+    public int storageSlotsOnPage(Team team, int page) {
+        int totalSlots = tier(team).slots;
+        return Math.min(ChestTier.STORAGE_PER_PAGE, Math.max(0, totalSlots - page * ChestTier.STORAGE_PER_PAGE));
+    }
+
     private byte[] snapshot(TeamChestData d) {
         List<ItemStack> flat = new ArrayList<>();
-        for (Inventory inv : d.pages) {
+        for (int p = 0; p < d.pages.size(); p++) {
+            Inventory inv = d.pages.get(p);
+            // Layout at build time; the tier may have changed since.
+            int storageThisPage = p < d.pageStorageSlots.size()
+                    ? d.pageStorageSlots.get(p) : storageSlotsOnPage(d.team, p);
             for (int i = 0; i < ChestTier.STORAGE_PER_PAGE; i++) {
-                flat.add(inv.getItem(i));
+                // Locked slots hold filler icons; never persist them.
+                flat.add(i < storageThisPage ? inv.getItem(i) : null);
             }
         }
+        // Overflow rides at the tail until capacity grows again.
+        flat.addAll(d.overflow);
         return Inventories.toBytes(flat.toArray(new ItemStack[0]));
     }
 
@@ -228,15 +255,20 @@ public final class ChestService {
         for (Map.Entry<UUID, TeamChestData> e : data.entrySet()) {
             TeamChestData d = e.getValue();
             if (!d.dirty) continue;
-            d.team.chestLock.lock();
-            try {
-                if (!d.dirty) continue;
-                byte[] blob = snapshot(d);
-                storage.saveChest(e.getKey(), blob);
-                d.dirty = false;
-            } finally {
-                d.team.chestLock.unlock();
-            }
+            final UUID teamId = e.getKey();
+            // Snapshot must happen on the main/global thread: live Inventories are
+            // mutated by vanilla click handling and must not be read async.
+            Schedulers.global(() -> {
+                d.team.chestLock.lock();
+                try {
+                    if (!d.dirty) return;
+                    byte[] blob = snapshot(d);
+                    d.dirty = false;
+                    storage.saveChest(teamId, blob);
+                } finally {
+                    d.team.chestLock.unlock();
+                }
+            });
         }
     }
 
@@ -275,6 +307,7 @@ public final class ChestService {
                             inv.setItem(i, null);
                         }
                     }
+                    d.overflow.clear();
                     d.dirty = false;
                     storage.saveChest(teamId, snapshot(d));
                 } else {

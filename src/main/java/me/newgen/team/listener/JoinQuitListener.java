@@ -23,7 +23,7 @@ public final class JoinQuitListener implements Listener {
         TeamMember m = team.member(event.getPlayer().getUniqueId());
         if (m != null && !event.getPlayer().getName().equals(m.name())) {
             m.name(event.getPlayer().getName());
-            plugin.storage().saveTeam(team);
+            plugin.teams().persist(team);
         }
         if (team.settings().notifyJoinLeave) {
             notifyTeam(team, event.getPlayer().getUniqueId(), "notify.member-online",

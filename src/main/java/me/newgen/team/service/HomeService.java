@@ -23,20 +23,45 @@ public final class HomeService {
 
     private final Map<UUID, Long> warmups = new ConcurrentHashMap<>();
 
+    /** Warmup start positions, for warmup-cancel-on-move. */
+    private final Map<UUID, Location> warmupOrigins = new ConcurrentHashMap<>();
+
     public HomeService(ConfigManager config, StorageProvider storage) {
         this.config = config;
         this.storage = storage;
     }
 
+    private TeamService teams;
+
+    public void setTeams(TeamService teams) {
+        this.teams = teams;
+    }
+
+    /** Persist through TeamService.persist() so failures are logged, not swallowed. */
+    private void persist(Team team) {
+        if (teams != null) teams.persist(team);
+        else storage.saveTeam(team);
+    }
+
+    /**
+     * Technical key for the default home. Stored in the database; never localize
+     * or change it, otherwise existing homes are orphaned.
+     */
+    public static final String DEFAULT_HOME_KEY = "default";
+
     public enum Result { SUCCESS, NO_HOME, ON_COOLDOWN, ALREADY_WARMING, WORLD_MISSING }
 
     public enum SetResult { SUCCESS, LIMIT_REACHED, NAME_TAKEN, INVALID_NAME }
 
-    public void setHome(Team team, Location loc, TeamService teamService) {
+    public SetResult setHome(Team team, Location loc, int homeLimit) {
+        // Moving an existing default home does not consume a slot.
+        boolean exists = team.namedHomes().containsKey(DEFAULT_HOME_KEY);
+        if (!exists && team.namedHomes().size() >= homeLimit) return SetResult.LIMIT_REACHED;
         team.home(TeamHome.from(loc));
 
-        team.namedHomes().put("Mặc định", team.home());
-        storage.saveTeam(team);
+        team.namedHomes().put(DEFAULT_HOME_KEY, team.home());
+        persist(team);
+        return SetResult.SUCCESS;
     }
 
     public SetResult setNamedHome(Team team, String name, Location loc, int homeLimit) {
@@ -46,7 +71,7 @@ public final class HomeService {
         team.namedHomes().put(name, TeamHome.from(loc));
 
         if (team.home() == null) team.home(TeamHome.from(loc));
-        storage.saveTeam(team);
+        persist(team);
         return SetResult.SUCCESS;
     }
 
@@ -59,7 +84,7 @@ public final class HomeService {
         } else {
             team.home(team.namedHomes().values().iterator().next());
         }
-        storage.saveTeam(team);
+        persist(team);
         return true;
     }
 
@@ -74,14 +99,23 @@ public final class HomeService {
         if (cooldownRemaining(id) > 0) return Result.ON_COOLDOWN;
         if (warmups.containsKey(id)) return Result.ALREADY_WARMING;
 
+        startTeleport(player, id, dest, onWarmupStart, onComplete, onCancelled);
+        return Result.SUCCESS;
+    }
+
+    /** Shared warmup/instant path for both the default and named home teleports. */
+    private void startTeleport(Player player, UUID id, Location dest, Runnable onWarmupStart,
+                               Runnable onComplete, Runnable onCancelled) {
         int warmupSec = config.homeTeleportWarmupSeconds();
         if (warmupSec <= 0) {
+            armCooldown(id);
             doTeleport(player, dest, onComplete);
-            return Result.SUCCESS;
+            return;
         }
 
         long token = System.nanoTime();
         warmups.put(id, token);
+        warmupOrigins.put(id, player.getLocation());
         if (onWarmupStart != null) onWarmupStart.run();
 
         Schedulers.entityLater(player, () -> {
@@ -91,11 +125,38 @@ public final class HomeService {
                 return;
             }
             warmups.remove(id);
-            cooldowns.put(id, System.currentTimeMillis()
-                    + TimeUnit.SECONDS.toMillis(config.homeTeleportCooldownSeconds()));
+            warmupOrigins.remove(id);
+            armCooldown(id);
             doTeleport(player, dest, onComplete);
         }, warmupSec * 20L);
-        return Result.SUCCESS;
+    }
+
+    private void armCooldown(UUID id) {
+        int sec = config.homeTeleportCooldownSeconds();
+        if (sec > 0) {
+            cooldowns.put(id, System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(sec));
+        }
+    }
+
+    /** Returns true when an active warmup was cancelled by movement. */
+    public boolean handleMove(UUID player, Location to) {
+        if (!config.homeWarmupCancelOnMove()) return false;
+        Location origin = warmupOrigins.get(player);
+        if (origin == null || to == null) return false;
+        if (origin.getWorld() != null && origin.getWorld().equals(to.getWorld())
+                && origin.getBlockX() == to.getBlockX()
+                && origin.getBlockY() == to.getBlockY()
+                && origin.getBlockZ() == to.getBlockZ()) {
+            return false;
+        }
+        cancelWarmup(player);
+        return true;
+    }
+
+    /** Drops expired cooldown entries. */
+    public void sweepExpired() {
+        long now = System.currentTimeMillis();
+        cooldowns.entrySet().removeIf(e -> e.getValue() < now);
     }
 
     public long cooldownRemaining(UUID player) {
@@ -111,6 +172,7 @@ public final class HomeService {
 
     public void cancelWarmup(UUID player) {
         warmups.remove(player);
+        warmupOrigins.remove(player);
     }
 
     public Result teleport(Player player, Team team, Runnable onWarmupStart,
@@ -124,27 +186,7 @@ public final class HomeService {
         if (cooldownRemaining(id) > 0) return Result.ON_COOLDOWN;
         if (warmups.containsKey(id)) return Result.ALREADY_WARMING;
 
-        int warmupSec = config.homeTeleportWarmupSeconds();
-        if (warmupSec <= 0) {
-            doTeleport(player, dest, onComplete);
-            return Result.SUCCESS;
-        }
-
-        long token = System.nanoTime();
-        warmups.put(id, token);
-        if (onWarmupStart != null) onWarmupStart.run();
-
-        Schedulers.entityLater(player, () -> {
-            Long current = warmups.get(id);
-            if (current == null || current != token) {
-                if (onCancelled != null) onCancelled.run();
-                return;
-            }
-            warmups.remove(id);
-            cooldowns.put(id, System.currentTimeMillis()
-                    + TimeUnit.SECONDS.toMillis(config.homeTeleportCooldownSeconds()));
-            doTeleport(player, dest, onComplete);
-        }, warmupSec * 20L);
+        startTeleport(player, id, dest, onWarmupStart, onComplete, onCancelled);
         return Result.SUCCESS;
     }
 
@@ -163,5 +205,6 @@ public final class HomeService {
     public void clear(UUID player) {
         cooldowns.remove(player);
         warmups.remove(player);
+        warmupOrigins.remove(player);
     }
 }

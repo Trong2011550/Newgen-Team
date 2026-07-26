@@ -48,6 +48,13 @@ public final class AdminLogsMenu extends PaginatedMenu<AuditLog> {
                     this.loaded = safe;
                     super.open();
                 });
+            }).exceptionally(ex -> {
+                plugin.logs().error("Failed to load audit logs for " + teamId + ": " + ex.getMessage());
+                Schedulers.entity(viewer, () -> {
+                    this.loaded = new ArrayList<>();
+                    super.open();
+                });
+                return null;
             });
             return;
         }
