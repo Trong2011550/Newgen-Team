@@ -1,10 +1,10 @@
 plugins {
     java
-    id("com.gradleup.shadow") version "8.3.5"
+    id("com.gradleup.shadow") version "9.6.1"
 }
 
 group = "me.newgen"
-version = "1.0.0"
+version = "1.1.0"
 
 base {
     archivesName.set("NewGenTeam")
@@ -20,7 +20,7 @@ repositories {
 }
 
 dependencies {
-    compileOnly("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
+    compileOnly("io.papermc.paper:paper-api:26.2.build.121-stable")
     compileOnly("me.clip:placeholderapi:2.11.6")
     // Vault (soft dependency) - team bank
     compileOnly("com.github.MilkBowl:VaultAPI:1.7") {
@@ -29,7 +29,7 @@ dependencies {
     // PlayerPoints (soft dependency) - team upgrade
     compileOnly("org.black_ixx:playerpoints:3.2.6")
     // PacketEvents (provided at runtime by the standalone plugin; load: BEFORE)
-    compileOnly("com.github.retrooper:packetevents-spigot:2.11.2")
+    compileOnly("com.github.retrooper:packetevents-spigot:2.13.0")
 
     implementation("org.bstats:bstats-bukkit:3.2.1")
     implementation("com.zaxxer:HikariCP:5.1.0")
@@ -39,13 +39,13 @@ dependencies {
 }
 
 java {
-    toolchain.languageVersion.set(JavaLanguageVersion.of(21))
+    toolchain.languageVersion.set(JavaLanguageVersion.of(25))
 }
 
 tasks {
     compileJava {
         options.encoding = "UTF-8"
-        options.release.set(21)
+        options.release.set(25)
     }
     shadowJar {
         archiveClassifier.set("")

@@ -63,7 +63,8 @@ public final class ChatService {
                 .replace("%tag%", team.tag())
                 .replace("%team%", team.name())
                 .replace("%player%", sender.getName())
-                .replace("%message%", rawMessage));
+                // Player input must not inject '&' colour codes into the template.
+                .replace("%message%", stripFormatting(rawMessage)));
         for (TeamMember m : team.members()) {
             Player p = Bukkit.getPlayer(m.uuid());
             if (p != null && p.isOnline()) {
@@ -74,6 +75,26 @@ public final class ChatService {
             Bukkit.getConsoleSender().sendMessage(out);
         }
         return true;
+    }
+
+    /** Removes legacy '&' and '§' colour codes so chat input cannot restyle the line. */
+    private static String stripFormatting(String message) {
+        if (message == null || message.isEmpty()) return message;
+        StringBuilder sb = new StringBuilder(message.length());
+        for (int i = 0; i < message.length(); i++) {
+            char c = message.charAt(i);
+            if (c == '\u00A7') {
+                i++; // skip the code char after §
+                continue;
+            }
+            if (c == '&' && i + 1 < message.length()
+                    && "0123456789AaBbCcDdEeFfKkLlMmNnOoRrXx".indexOf(message.charAt(i + 1)) >= 0) {
+                i++; // skip the code char after &
+                continue;
+            }
+            sb.append(c);
+        }
+        return sb.toString();
     }
 
     public void notifyTeam(Team team, String messageKey, Object... placeholders) {
