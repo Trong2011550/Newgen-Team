@@ -87,7 +87,9 @@ public final class Icons {
 
     public static ItemStack disabledPage() {
         return ItemBuilder.of(Material.GRAY_STAINED_GLASS_PANE)
-                .name("<muted>—")
+                // Legacy colour code, not a "<muted>" theme token: this factory bypasses
+                // ThemeManager, so an unresolved token would render as literal text.
+                .name("&8—")
                 .hideAll()
                 .build();
     }

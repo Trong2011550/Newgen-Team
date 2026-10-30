@@ -247,26 +247,42 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
         new me.newgen.team.gui.menu.admin.AdminMainMenu(plugin, p).open();
     }
 
+    private static final int LIST_LIMIT = 50;
+
     private void handleList(CommandSender sender) {
         var teams = plugin.teams().all();
         plugin.messages().send(sender, "team.list-header", "count", teams.size());
-        for (Team t : teams) {
+        // Cap the output: one chat packet per team on the main thread can flood the client
+        // and stall the server when there are hundreds of teams. Show the largest first.
+        List<Team> sorted = new ArrayList<>(teams);
+        sorted.sort(java.util.Comparator.comparingInt(Team::size).reversed());
+        int shown = Math.min(LIST_LIMIT, sorted.size());
+        for (int i = 0; i < shown; i++) {
+            Team t = sorted.get(i);
             plugin.messages().sendRaw(sender, "team.list-entry",
                     "name", t.name(), "tag", t.tag(), "members", t.size());
+        }
+        if (sorted.size() > shown) {
+            plugin.messages().send(sender, "team.list-truncated",
+                    "shown", shown, "total", sorted.size());
         }
     }
 
     private void handleChat(Player p, String[] args) {
         Team team = plugin.teams().byPlayer(p.getUniqueId());
         if (team == null) { plugin.messages().send(p, "team.not-in"); return; }
-        if (!plugin.permissions().has(team, p.getUniqueId(),
-                me.newgen.team.permission.TeamPermission.TOGGLE_TEAM_CHAT)) {
-            plugin.messages().send(p, "general.no-permission"); return;
-        }
         if (args.length >= 2) {
+            // Speaking in team chat only requires membership (and the team-chat setting,
+            // enforced inside sendTeamMessage). TOGGLE_TEAM_CHAT governs flipping the
+            // channel on/off, not sending a one-off message - gating both on it locked
+            // out roles like RECRUIT that lack the toggle permission.
             String msg = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
             if (!plugin.chat().sendTeamMessage(p, msg)) plugin.messages().send(p, "team.not-in");
             return;
+        }
+        if (!plugin.permissions().has(team, p.getUniqueId(),
+                me.newgen.team.permission.TeamPermission.TOGGLE_TEAM_CHAT)) {
+            plugin.messages().send(p, "general.no-permission"); return;
         }
         boolean on = plugin.chat().toggle(p.getUniqueId());
         plugin.messages().send(p, on ? "chat.enabled" : "chat.disabled");

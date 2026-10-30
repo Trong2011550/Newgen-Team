@@ -19,9 +19,6 @@ public final class UpgradeMenu extends Menu {
 
     private final NewGenTeamPlugin plugin;
 
-    private static final int[] TIER_SLOTS = {19, 21, 23, 25};
-    private static final int[] BUTTON_SLOTS = {28, 30, 32, 34};
-
     public UpgradeMenu(NewGenTeamPlugin plugin, Player viewer) {
         super(viewer);
         this.plugin = plugin;
@@ -57,27 +54,32 @@ public final class UpgradeMenu extends Menu {
                         ? L("gui.upgrade.balance-line", "balance", balance, "currency", currency())
                         : L("gui.upgrade.no-playerpoints")).glow(true).build());
 
-        TierService tiers = plugin.tiers();
         List<TierConfig.Tier> table = plugin.config().tierConfig().tiers();
         int currentLevel = team.tier();
         int nextLevel = currentLevel + 1;
 
-        for (int i = 0; i < table.size() && i < TIER_SLOTS.length; i++) {
+        // Slots are derived from the display index, not from t.level, so non-contiguous
+        // levels can no longer throw ArrayIndexOutOfBounds. Up to 7 tiles fit on the row;
+        // <=4 tiers use spaced slots, more tiers use contiguous slots.
+        int n = table.size();
+        int spacing = n <= 4 ? 2 : 1;
+        int row = 19;
+        for (int i = 0; i < n; i++) {
+            int tileSlot = row + i * spacing;
+            int buttonSlot = tileSlot + 9;
+            if (tileSlot > 25 || buttonSlot > 44) break; // out of room on the display rows
             TierConfig.Tier t = table.get(i);
             boolean owned = t.level <= currentLevel;
             boolean isNext = t.level == nextLevel;
-            buildTierTile(team, t, owned, isNext, economy, balance);
+            buildTierTile(team, t, tileSlot, buttonSlot, owned, isNext, economy, balance);
         }
 
         set(49, Icons.back(), e -> { Sounds.click(viewer); plugin.menus().openMain(viewer); });
         set(53, Icons.close(), e -> { Sounds.click(viewer); viewer.closeInventory(); });
     }
 
-    private void buildTierTile(Team team, TierConfig.Tier t, boolean owned, boolean isNext,
-                               boolean economy, long balance) {
-        int slot = TIER_SLOTS[t.level - 1];
-        int buttonSlot = BUTTON_SLOTS[t.level - 1];
-
+    private void buildTierTile(Team team, TierConfig.Tier t, int slot, int buttonSlot,
+                               boolean owned, boolean isNext, boolean economy, long balance) {
         Material icon = owned ? Material.NETHER_STAR
                 : isNext ? Material.CHEST : Material.GRAY_DYE;
         String status = owned ? L("gui.upgrade.status-owned")

@@ -43,8 +43,18 @@ public final class TeamListMenu extends PaginatedMenu<Team> {
     }
     @Override protected int pageSize() { return 45; }
 
+    /** Memoized per build so decorate() and the render loop share one scan+sort. */
+    private List<Team> memo;
+
+    @Override
+    public void refresh() {
+        memo = null;
+        super.refresh();
+    }
+
     @Override
     protected List<Team> elements() {
+        if (memo != null) return memo;
         String q = query == null ? "" : query.toLowerCase(Locale.ROOT).trim();
         List<Team> out = new ArrayList<>();
         for (Team t : plugin.teams().all()) {
@@ -58,6 +68,7 @@ public final class TeamListMenu extends PaginatedMenu<Team> {
         out.sort(Comparator
                 .comparingInt((Team t) -> t.size()).reversed()
                 .thenComparing(t -> t.name(), String.CASE_INSENSITIVE_ORDER));
+        memo = out;
         return out;
     }
 
@@ -89,6 +100,12 @@ public final class TeamListMenu extends PaginatedMenu<Team> {
 
         TeamService.Result r = plugin.teams().requestJoin(viewer.getUniqueId(), viewer.getName(), team);
         switch (r) {
+            case JOINED -> {
+                Sounds.success(viewer);
+                plugin.messages().send(viewer, "invite.accepted", "team", team.name());
+                plugin.chat().notifyTeam(team, "notify.joined", "player", viewer.getName());
+                plugin.menus().openMain(viewer);
+            }
             case SUCCESS -> {
                 Sounds.success(viewer);
                 plugin.messages().send(viewer, "join.requested", "team", team.name());

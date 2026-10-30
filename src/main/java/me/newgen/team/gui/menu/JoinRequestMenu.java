@@ -37,11 +37,23 @@ public final class JoinRequestMenu extends PaginatedMenu<UUID> {
     }
     @Override protected int pageSize() { return 45; }
 
+    /** Memoized per build so decorate() does not rebuild the list. */
+    private List<UUID> memo;
+
+    @Override
+    public void refresh() {
+        memo = null;
+        super.refresh();
+    }
+
     @Override
     protected List<UUID> elements() {
+        if (memo != null) return memo;
         Team team = plugin.teams().byPlayer(viewer.getUniqueId());
-        if (team == null) return new ArrayList<>();
-        return new ArrayList<>(plugin.teams().joinRequestsFor(team.id()).keySet());
+        memo = team == null
+                ? new ArrayList<>()
+                : new ArrayList<>(plugin.teams().joinRequestsFor(team.id()).keySet());
+        return memo;
     }
 
     @Override

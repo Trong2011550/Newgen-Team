@@ -67,6 +67,10 @@ public final class TierService {
         int oldTier;
         // One purchase at a time per team.
         synchronized (team) {
+            // The GUI captures `team` at build time; it may have been disbanded before the
+            // click lands. Charging a dead team loses money (persist is dropped by the
+            // resurrect-guard), so re-validate existence first.
+            if (teams != null && teams.byId(team.id()) != team) return Result.FAILED;
             if (isMaxLevel(team)) return Result.MAX_LEVEL;
             if (!points.isAvailable()) return Result.NO_ECONOMY;
 
@@ -87,7 +91,10 @@ public final class TierService {
                 team.tier(oldTier);
                 // Re-persist the reverted tier; the new value may already be queued.
                 persist(team);
-                if (price > 0) points.give(purchaser, price);
+                if (price > 0 && !points.give(purchaser, price)) {
+                    Bukkit.getLogger().severe("[NewGenTeam] Upgrade failed and refund of " + price
+                            + " to " + purchaser + " ALSO failed - manual compensation required.");
+                }
                 return Result.FAILED;
             }
         }

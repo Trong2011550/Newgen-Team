@@ -12,13 +12,17 @@ import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 
 public final class StatsMenu extends Menu {
 
     private final NewGenTeamPlugin plugin;
-    private static final SimpleDateFormat DATE = new SimpleDateFormat("yyyy-MM-dd");
+    // DateTimeFormatter is thread-safe (SimpleDateFormat is not) - GUI builds can run
+    // on region/entity threads under Folia.
+    private static final DateTimeFormatter DATE =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(ZoneId.systemDefault());
 
     public StatsMenu(NewGenTeamPlugin plugin, Player viewer) {
         super(viewer);
@@ -50,7 +54,7 @@ public final class StatsMenu extends Menu {
                 .head(Bukkit.getOfflinePlayer(team.leader()))
                 .name(L("gui.main.team-header", "team", team.name(), "tag", team.tag()))
                 .lore(L("gui.common.leader", "leader", leaderName == null ? "?" : leaderName),
-                        L("gui.common.created", "date", DATE.format(new Date(team.createdAt()))))
+                        L("gui.common.created", "date", DATE.format(Instant.ofEpochMilli(team.createdAt()))))
                 .glow(true).build());
 
         set(20, ItemBuilder.of(Material.PLAYER_HEAD).head(viewer)

@@ -28,6 +28,14 @@ public final class InventoryListener implements Listener {
 
         if (holder instanceof MenuHolder mh) {
             event.setCancelled(true);
+            // Cancelling a click that targets the player's own inventory (e.g. a number-key
+            // HOTBAR_SWAP) leaves the client's prediction unrolled-back. Re-sync the view so
+            // the hotbar does not show ghost items.
+            if (event.getWhoClicked() instanceof Player p
+                    && event.getClickedInventory() != null
+                    && !event.getClickedInventory().equals(event.getView().getTopInventory())) {
+                me.newgen.team.scheduler.Schedulers.entity(p, p::updateInventory);
+            }
             Menu menu = mh.menu();
             if (menu != null) {
                 menu.handleClick(event);
@@ -41,6 +49,9 @@ public final class InventoryListener implements Listener {
             if (team == null) { event.setCancelled(true); return; }
             if (handleNavigation(event, player, team, ch)) return;
             enforceChestPermissions(event, player, team);
+            // A surviving (non-cancelled) click mutates the live chest; flag it dirty so the
+            // periodic flush persists open chests instead of only saving on close.
+            if (!event.isCancelled()) plugin.chests().markDirty(team);
         }
     }
 
@@ -163,6 +174,8 @@ public final class InventoryListener implements Listener {
             if (touchesTop && !plugin.permissions().has(team, player.getUniqueId(), TeamPermission.CHEST_DEPOSIT)) {
                 event.setCancelled(true);
                 me.newgen.team.util.Sounds.error(player);
+            } else if (!event.isCancelled()) {
+                plugin.chests().markDirty(team);
             }
         }
     }

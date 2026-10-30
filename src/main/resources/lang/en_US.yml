@@ -29,6 +29,7 @@ team:
   leader-must-transfer: "<secondary>You are the team owner. Transfer ownership or disband first."
   list-header: "<secondary><bold>Team List</bold> <accent>(<primary>%count%<accent>):"
   list-entry: "<accent>- <primary>%name% <accent>[<primary>%tag%<accent>] <dark_gray>(%members% members)"
+  list-truncated: "<muted>Showing top <primary>%shown%<muted> of <primary>%total%<muted> teams."
 
 member:
   kicked: "<primary>Kicked <accent>%player% <primary>from the team."
@@ -115,6 +116,7 @@ notify:
   kicked: "<accent>[<secondary>Team<accent>] <primary>%player% <accent>kicked <primary>%target% <accent>from the team."
   role-set: "<accent>[<secondary>Team<accent>] <primary>%player% <accent>set <primary>%target%<accent>'s role to %role%<accent>."
   transferred: "<accent>[<secondary>Team<accent>] <primary>%player% <accent>transferred ownership to <primary>%target%<accent>."
+  tier-changed: "<accent>[<secondary>Team<accent>] <accent>Team level changed to <primary>%level%<accent>. Perks updated."
 
 search:
   prompt: "<primary>Type a player or team name in chat <accent>(type 'cancel' to abort)<primary>."
@@ -185,6 +187,28 @@ command:
     <accent>/team list <muted>- List all teams
     <accent>/team admin <muted>- Open the admin panel (staff)
 
+  newgen-help: |-
+    <secondary><bold>█ NewGen Team</bold> <accent>────────────
+    <accent>/newgen info <muted>- Server-wide team statistics
+    <accent>/newgenteam status <muted>- Live resource usage (OP only)
+    <accent>/newgenteam reload <muted>- Reload config (admin)
+    <accent>/newgenteam version <muted>- Show build info
+  version: "<muted>NewGen Team <primary>%version% <muted>| MC <primary>%api%"
+  info:
+    header: "<secondary><bold>█ Server Teams</bold> <accent>────────────"
+    teams: "<muted>Teams: <primary>%teams%"
+    members: "<muted>Members: <primary>%members% <muted>(online: <accent>%online%<muted>)"
+    avg: "<muted>Average: <primary>%avg% <muted>members/team"
+    largest: "<muted>Largest: <primary>%name% <muted>(%size% members)"
+  status:
+    header: "<secondary><bold>█ Resource Usage</bold> <accent>────────────"
+    cpu: "<muted>CPU: <primary>%proc% <muted>process | <primary>%sys% <muted>system | %cores% cores | load %load%"
+    memory: "<muted>Heap: <primary>%used%/%max% MB <muted>(committed %committed% MB) | non-heap %nonheap% MB"
+    disk: "<muted>Plugin disk: <primary>%plugindisk% <muted>(%files% files) | drive free <primary>%free% <muted>of %total%"
+    objects: "<muted>Objects: <primary>%teams% <muted>teams, <primary>%members% <muted>members, <primary>%online% <muted>online"
+    tasks: "<muted>Plugin tasks: <primary>%runs% <muted>runs, <primary>%millis% ms <muted>total CPU"
+    note: "<muted>Heap/CPU are whole-JVM (shared with the server); disk, object and task figures are plugin-owned."
+
 # ============================================================
 #  GUI - All text displayed inside menus.
 #  Placeholders: %team% %player% %leader% %members% %limit% %tier%
@@ -192,6 +216,12 @@ command:
 #                %query% %price% %currency% %status% %count%
 # ============================================================
 gui:
+  # ---- Native dialog prompts (1.21.6+) ----
+  dialog:
+    title: "<secondary><bold>NewGen Team"
+    label: "<muted>Enter a value"
+    submit: "<accent><bold>Confirm"
+    desc: "<muted>Type your answer below, then press Confirm."
   # ---- Shared buttons (Icons) ----
   common:
     back: "<secondary>← Back"

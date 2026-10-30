@@ -34,8 +34,18 @@ public final class MyInvitesMenu extends PaginatedMenu<Team> {
     @Override protected String title() { return L("gui.my-invites.title"); }
     @Override protected int pageSize() { return 45; }
 
+    /** Memoized per build so decorate() does not rebuild the list. */
+    private List<Team> memo;
+
+    @Override
+    public void refresh() {
+        memo = null;
+        super.refresh();
+    }
+
     @Override
     protected List<Team> elements() {
+        if (memo != null) return memo;
         List<Team> out = new ArrayList<>();
         Map<UUID, Long> invites = plugin.teams().invitesFor(viewer.getUniqueId());
         long now = System.currentTimeMillis();
@@ -44,6 +54,7 @@ public final class MyInvitesMenu extends PaginatedMenu<Team> {
             Team t = plugin.teams().byId(e.getKey());
             if (t != null) out.add(t);
         }
+        memo = out;
         return out;
     }
 

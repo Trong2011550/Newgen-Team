@@ -49,8 +49,12 @@ public final class RoleMenu extends Menu {
                 .name(L("gui.role.target-name", "player", tm.name()))
                 .lore(L("gui.role.current-role", "role", L("gui.role.names." + tm.role().name()))).build());
 
+        // The viewer may have been kicked between the byPlayer() lookup above and here
+        // (possible under Folia's multi-threaded regions); guard against a null member.
+        TeamMember self = team.member(viewer.getUniqueId());
+        if (self == null) { plugin.menus().openMembers(viewer); return; }
         TeamRole actorRole = team.leader().equals(viewer.getUniqueId())
-                ? TeamRole.OWNER : team.member(viewer.getUniqueId()).role();
+                ? TeamRole.OWNER : self.role();
 
         int[] slots = {10, 11, 12, 13, 14};
         TeamRole[] assignable = {TeamRole.CO_OWNER, TeamRole.ADMIN, TeamRole.MOD,

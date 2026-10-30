@@ -12,15 +12,20 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 public final class TopMenu extends PaginatedMenu<Team> {
 
     private final NewGenTeamPlugin plugin;
+    private final StatsService.TopType type;
 
     public TopMenu(Player viewer, NewGenTeamPlugin plugin, StatsService.TopType type, int page) {
         super(viewer, page);
         this.plugin = plugin;
+        this.type = type;
     }
 
     private String L(String key, Object... pairs) {
@@ -32,25 +37,32 @@ public final class TopMenu extends PaginatedMenu<Team> {
 
     /** Leaderboard cached per refresh; computed once per build, not per rendered item. */
     private List<Team> cachedTop;
+    private final Map<UUID, Integer> cachedRank = new HashMap<>();
 
     @Override
     public void refresh() {
         cachedTop = null;
+        cachedRank.clear();
         super.refresh();
     }
 
     @Override
     protected List<Team> elements() {
         if (cachedTop == null) {
-            cachedTop = plugin.stats().top(StatsService.TopType.KDR, 1000);
+            cachedTop = plugin.stats().top(type, 1000);
+            cachedRank.clear();
+            for (int i = 0; i < cachedTop.size(); i++) {
+                cachedRank.put(cachedTop.get(i).id(), i + 1);
+            }
         }
         return cachedTop;
     }
 
     @Override
     protected ItemStack render(Team team) {
-        List<Team> all = elements();
-        int rank = all.indexOf(team) + 1;
+        elements(); // ensure the ranking cache is populated
+        Integer boxed = cachedRank.get(team.id());
+        int rank = boxed == null ? 0 : boxed;
         Material icon = switch (rank) {
             case 1 -> Material.NETHER_STAR;
             case 2 -> Material.DIAMOND;

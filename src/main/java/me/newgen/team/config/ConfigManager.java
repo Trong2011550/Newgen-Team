@@ -17,27 +17,33 @@ public final class ConfigManager {
     private final ChestConfig chestConfig = new ChestConfig();
     private final TierConfig tierConfig = new TierConfig();
 
-    private String language = "vi_VN";
+    // Volatile: load() runs on the main thread while these are read by the async
+    // heartbeat (chest flush) and LogService on other threads.
+    private volatile String language = "vi_VN";
 
-    private int maxNameLength = 16;
-    private int maxTagLength = 6;
-    private int maxMembers = 30;
-    private long inviteTtlSeconds = 120;
+    private volatile int maxNameLength = 16;
+    private volatile int maxTagLength = 6;
+    private volatile int maxMembers = 30;
+    private volatile long inviteTtlSeconds = 120;
 
-    private int homeTeleportCooldownSeconds = 5;
-    private int homeTeleportWarmupSeconds = 3;
-    private boolean homeWarmupCancelOnMove = true;
+    private volatile int homeTeleportCooldownSeconds = 5;
+    private volatile int homeTeleportWarmupSeconds = 3;
+    private volatile boolean homeWarmupCancelOnMove = true;
 
-    private long chestFlushIntervalSeconds = 300;
+    private volatile long chestFlushIntervalSeconds = 300;
 
-    private boolean trackKills = true;
+    private volatile boolean trackKills = true;
 
-    private String teamChatFormat = "&d[%tag%] &7%player%&8: &f%message%";
-    private boolean teamChatLogToConsole = true;
+    private volatile String teamChatFormat = "&d[%tag%] &7%player%&8: &f%message%";
+    private volatile boolean teamChatLogToConsole = true;
 
-    private FileConfiguration database = new YamlConfiguration();
-    private FileConfiguration hooks = new YamlConfiguration();
-    private FileConfiguration logs = new YamlConfiguration();
+    /** How text prompts (rename, tag, bank, search...) are shown to players. */
+    public enum InputMethod { AUTO, DIALOG, SIGN }
+    private volatile InputMethod inputMethod = InputMethod.AUTO;
+
+    private volatile FileConfiguration database = new YamlConfiguration();
+    private volatile FileConfiguration hooks = new YamlConfiguration();
+    private volatile FileConfiguration logs = new YamlConfiguration();
 
     public ConfigManager(Plugin plugin) {
         this.plugin = plugin;
@@ -57,6 +63,7 @@ public final class ConfigManager {
         trackKills = settings.getBoolean("stats.track-kills", trackKills);
         teamChatFormat = settings.getString("chat.team-format", teamChatFormat);
         teamChatLogToConsole = settings.getBoolean("chat.log-to-console", teamChatLogToConsole);
+        inputMethod = parseInputMethod(settings.getString("gui.input-method", "AUTO"));
 
         FileConfiguration homes = loadYaml("homes.yml");
         homeTeleportCooldownSeconds = homes.getInt("home.teleport-cooldown-seconds", homeTeleportCooldownSeconds);
@@ -79,6 +86,15 @@ public final class ConfigManager {
 
     private static int clamp(int v, int min, int max) {
         return Math.max(min, Math.min(max, v));
+    }
+
+    private static InputMethod parseInputMethod(String raw) {
+        if (raw == null) return InputMethod.AUTO;
+        switch (raw.trim().toUpperCase(java.util.Locale.ROOT)) {
+            case "DIALOG": case "DIALOGS": return InputMethod.DIALOG;
+            case "SIGN": case "SIGNS": case "FAKE_SIGN": return InputMethod.SIGN;
+            default: return InputMethod.AUTO;
+        }
     }
 
     /**
@@ -126,4 +142,5 @@ public final class ConfigManager {
     public boolean trackKills() { return trackKills; }
     public String teamChatFormat() { return teamChatFormat; }
     public boolean teamChatLogToConsole() { return teamChatLogToConsole; }
+    public InputMethod inputMethod() { return inputMethod; }
 }

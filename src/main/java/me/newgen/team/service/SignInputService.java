@@ -48,6 +48,13 @@ public final class SignInputService extends PacketListenerAbstract {
 
     private final Map<UUID, Pending> pending = new ConcurrentHashMap<>();
 
+    /** Modern Dialog-API input (1.21.6+); when present it takes priority over the fake sign. */
+    private volatile DialogInputService dialogs;
+
+    public void setDialogs(DialogInputService dialogs) {
+        this.dialogs = dialogs;
+    }
+
     /** GlobalId of a standing OAK_SIGN, computed once instead of per open. */
     private static volatile int cachedSignGlobalId = -1;
 
@@ -65,6 +72,11 @@ public final class SignInputService extends PacketListenerAbstract {
     }
 
     public void await(Player player, Consumer<String> onInput) {
+        // Prefer the native Dialog API (1.21.6+): no fake block, no packet restore,
+        // works while an inventory is open. Falls through to the sign editor otherwise.
+        DialogInputService d = this.dialogs;
+        if (d != null && d.promptText(player, onInput)) return;
+
         UUID id = player.getUniqueId();
         cancel(id);
 
@@ -99,6 +111,8 @@ public final class SignInputService extends PacketListenerAbstract {
     }
 
     public void cancel(UUID player) {
+        DialogInputService d = this.dialogs;
+        if (d != null) d.cancel(player);
         Pending p = pending.remove(player);
         if (p != null) {
             Player bukkit = org.bukkit.Bukkit.getPlayer(player);
@@ -111,7 +125,8 @@ public final class SignInputService extends PacketListenerAbstract {
     }
 
     public boolean isAwaiting(UUID player) {
-        return pending.containsKey(player);
+        DialogInputService d = this.dialogs;
+        return pending.containsKey(player) || (d != null && d.isAwaiting(player));
     }
 
     private static void sendRestore(Player player, Vector3i pos) {
@@ -132,13 +147,16 @@ public final class SignInputService extends PacketListenerAbstract {
         UUID id = event.getUser().getUUID();
         if (id == null) return;
 
+        // Resolve the player BEFORE consuming the session. If the player is unavailable we
+        // must leave the pending entry intact so its timeout still restores the fake block
+        // and fires the callback - removing it here would leak a ghost sign until relog.
+        Player player = (Player) event.getPlayer();
+        if (player == null) return;
+
         // Fast path: the vast majority of sign updates on a busy server have
         // no pending session; nothing is parsed or allocated for them.
         Pending p = pending.remove(id);
         if (p == null) return;
-
-        Player player = (Player) event.getPlayer();
-        if (player == null) return;
 
         WrapperPlayClientUpdateSign wrapper = new WrapperPlayClientUpdateSign(event);
         String[] lines = wrapper.getTextLines();

@@ -33,10 +33,6 @@ public final class ChestConfig {
         this.tiers = built.isEmpty() ? ChestTier.defaults() : built;
     }
 
-    private int roundToMultipleOfNine(int slots) {
-        return ((slots + 8) / 9) * 9;
-    }
-
     public List<ChestTier> tiers() {
         return tiers;
     }

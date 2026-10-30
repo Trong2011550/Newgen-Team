@@ -23,36 +23,44 @@ public final class LanguageManager {
     private static final String[] BUNDLED = {"vi_VN", "en_US"};
 
     private final Plugin plugin;
-    private final Map<String, String> messages = new HashMap<>();
-    private final Map<String, String> fallback = new HashMap<>();
-    private String language = FALLBACK;
+    // Volatile immutable snapshots: load() runs on the main thread while raw()/has()
+    // are read from AsyncChatEvent (netty) threads. Swapping whole maps avoids the
+    // ConcurrentModificationException / torn reads a live HashMap would cause on reload.
+    private volatile Map<String, String> messages = java.util.Collections.emptyMap();
+    private volatile Map<String, String> fallback = java.util.Collections.emptyMap();
+    private volatile String language = FALLBACK;
 
     public LanguageManager(Plugin plugin) {
         this.plugin = plugin;
     }
 
     public void load(String languageCode) {
-        this.language = languageCode == null || languageCode.isBlank() ? FALLBACK : languageCode.trim();
-        messages.clear();
-        fallback.clear();
+        String code = languageCode == null || languageCode.isBlank() ? FALLBACK : languageCode.trim();
 
         // Ship bundled language files so admins can edit them.
-        for (String code : BUNDLED) {
-            File f = new File(plugin.getDataFolder(), "lang/" + code + ".yml");
+        for (String bundled : BUNDLED) {
+            File f = new File(plugin.getDataFolder(), "lang/" + bundled + ".yml");
             if (!f.exists()) {
-                plugin.saveResource("lang/" + code + ".yml", false);
+                plugin.saveResource("lang/" + bundled + ".yml", false);
             }
         }
 
-        loadInto(fallback, FALLBACK);
-        if (language.equals(FALLBACK)) {
-            messages.putAll(fallback);
+        Map<String, String> fb = new HashMap<>();
+        loadInto(fb, FALLBACK);
+        Map<String, String> msg;
+        if (code.equals(FALLBACK)) {
+            msg = new HashMap<>(fb);
         } else {
-            loadInto(messages, language);
-            if (messages.isEmpty()) {
-                plugin.getLogger().warning("Language file lang/" + language + ".yml not found or empty - falling back to " + FALLBACK + ".");
+            msg = new HashMap<>();
+            loadInto(msg, code);
+            if (msg.isEmpty()) {
+                plugin.getLogger().warning("Language file lang/" + code + ".yml not found or empty - falling back to " + FALLBACK + ".");
             }
         }
+        // Publish immutable snapshots atomically.
+        this.fallback = java.util.Collections.unmodifiableMap(fb);
+        this.messages = java.util.Collections.unmodifiableMap(msg);
+        this.language = code;
     }
 
     private void loadInto(Map<String, String> target, String code) {

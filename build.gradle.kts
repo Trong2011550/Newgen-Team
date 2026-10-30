@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "me.newgen"
-version = "1.1.0"
+version = "1.2.0"
 
 base {
     archivesName.set("NewGenTeam")
@@ -20,7 +20,7 @@ repositories {
 }
 
 dependencies {
-    compileOnly("io.papermc.paper:paper-api:26.2.build.121-stable")
+    compileOnly("io.papermc.paper:paper-api:26.3.build.230-stable")
     compileOnly("me.clip:placeholderapi:2.11.6")
     // Vault (soft dependency) - team bank
     compileOnly("com.github.MilkBowl:VaultAPI:1.7") {

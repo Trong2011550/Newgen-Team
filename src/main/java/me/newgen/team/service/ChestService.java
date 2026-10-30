@@ -25,8 +25,6 @@ public final class ChestService {
     private final StorageProvider storage;
     private final ChestConfig chestConfig;
 
-    private final Map<UUID, ChestHolder> holders = new ConcurrentHashMap<>();
-
     public ChestService(Logger log, StorageProvider storage, ChestConfig chestConfig) {
         this.log = log;
         this.storage = storage;

@@ -11,8 +11,12 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 /**
  * PlaceholderAPI expansion. Identifier: newgenteam.
@@ -38,6 +42,13 @@ public final class PlaceholderHook extends PlaceholderExpansion {
     private final Plugin plugin;
     private final TeamService teams;
     private boolean registered;
+
+    // Leaderboard ranks are recomputed at most once per RANK_CACHE_MS. %newgenteam_rank%
+    // can be requested for every player on every scoreboard refresh, and a full sort of
+    // all teams per request is an O(n log n) main-thread cost we do not want to repeat.
+    private static final long RANK_CACHE_MS = 5000L;
+    private volatile Map<UUID, Integer> rankCache = Collections.emptyMap();
+    private volatile long rankCacheAt = 0L;
 
     public PlaceholderHook(Plugin plugin, TeamService teams) {
         this.plugin = plugin;
@@ -105,13 +116,20 @@ public final class PlaceholderHook extends PlaceholderExpansion {
         return online;
     }
 
-    /** 1-based leaderboard position by kills, computed from the in-memory cache. */
+    /** 1-based leaderboard position by kills, from a short-lived cached ranking. */
     private int rankOf(Team team) {
-        List<Team> all = new ArrayList<>(teams.all());
-        all.sort(Comparator.comparingInt((Team t) -> t.kills()).reversed());
-        for (int i = 0; i < all.size(); i++) {
-            if (all.get(i).id().equals(team.id())) return i + 1;
+        long now = System.currentTimeMillis();
+        Map<UUID, Integer> cache = rankCache;
+        if (cache.isEmpty() || now - rankCacheAt > RANK_CACHE_MS) {
+            List<Team> all = new ArrayList<>(teams.all());
+            all.sort(Comparator.comparingInt((Team t) -> t.kills()).reversed());
+            Map<UUID, Integer> next = new HashMap<>(all.size() * 2);
+            for (int i = 0; i < all.size(); i++) next.put(all.get(i).id(), i + 1);
+            rankCache = next;
+            rankCacheAt = now;
+            cache = next;
         }
-        return 0;
+        Integer rank = cache.get(team.id());
+        return rank == null ? 0 : rank;
     }
 }

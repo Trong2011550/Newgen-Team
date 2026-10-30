@@ -65,6 +65,7 @@ public final class NewGenTeamPlugin extends JavaPlugin {
     private RelationService relationService;
     private SearchManager searchManager;
     private SignInputService signInputService;
+    private me.newgen.team.service.DialogInputService dialogInputService;
     private AuditLogService auditLogService;
     private AdminService adminService;
     private LogService logService;
@@ -75,6 +76,7 @@ public final class NewGenTeamPlugin extends JavaPlugin {
     @Override
     public void onEnable() {
         Schedulers.init(this);
+        printStartupBanner();
 
         PacketEvents.setAPI(SpigotPacketEventsBuilder.build(this));
         PacketEvents.getAPI().load();
@@ -117,9 +119,14 @@ public final class NewGenTeamPlugin extends JavaPlugin {
         chatService.setLogToConsole(configManager.teamChatLogToConsole());
         this.statsService = new StatsService(teamService, storage);
         this.relationService = new RelationService(teamService, storage);
+        teamService.setRelations(relationService);
         this.searchManager = new SearchManager(teamService);
         this.signInputService = new SignInputService();
-        this.auditLogService = new AuditLogService(storage);
+        this.dialogInputService = new me.newgen.team.service.DialogInputService(messageManager, configManager);
+        signInputService.setDialogs(dialogInputService);
+        getLogger().info("Text input method='" + configManager.inputMethod() + "', Dialog API "
+                + (dialogInputService.supported() ? "detected" : "unavailable (sign fallback)") + ".");
+        this.auditLogService = new AuditLogService(storage, getLogger());
         this.adminService = new AdminService(this);
 
         PacketEvents.getAPI().init();
@@ -147,20 +154,34 @@ public final class NewGenTeamPlugin extends JavaPlugin {
             });
         });
 
-        this.placeholderHook = new PlaceholderHook(this, teamService);
+        // PlaceholderHook extends PlaceholderAPI's PlaceholderExpansion. Constructing it
+        // loads that superclass, which throws NoClassDefFoundError (aborting onEnable)
+        // when PlaceholderAPI is not installed - so only touch the class when the plugin
+        // is actually present.
         if (!configManager.hookEnabled("placeholderapi")) {
             getLogger().info("PlaceholderAPI hook disabled in hooks.yml.");
-        } else if (placeholderHook.tryRegister()) {
-            getLogger().info("Hooked into PlaceholderAPI.");
+        } else if (getServer().getPluginManager().getPlugin("PlaceholderAPI") == null) {
+            getLogger().info("PlaceholderAPI not installed - placeholders disabled.");
+        } else {
+            this.placeholderHook = new PlaceholderHook(this, teamService);
+            if (placeholderHook.tryRegister()) {
+                getLogger().info("Hooked into PlaceholderAPI.");
+            }
         }
 
         TeamCommand teamCommand = new TeamCommand(this);
+        me.newgen.team.command.NewGenCommand newGenCommand = new me.newgen.team.command.NewGenCommand(this);
         this.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> {
             event.registrar().register(
                     "team",
                     "Open the NewGen Team menu.",
                     java.util.List.of("t", "faction", "f", "guild", "g"),
                     new me.newgen.team.command.TeamBasicCommand(teamCommand));
+            event.registrar().register(
+                    "newgenteam",
+                    "NewGen Team admin & info commands.",
+                    java.util.List.of("newgen", "ngen", "ngt"),
+                    new me.newgen.team.command.NewGenBasicCommand(newGenCommand));
         });
 
         getServer().getPluginManager().registerEvents(new InventoryListener(this), this);
@@ -170,21 +191,22 @@ public final class NewGenTeamPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new me.newgen.team.listener.MoveListener(this), this);
 
         // Heartbeat reads the interval live so /team reload applies it without a restart.
-        Schedulers.asyncRepeating(() -> {
+        Schedulers.asyncRepeating(me.newgen.team.util.ResourceMetrics.measured(() -> {
+            statsService.flushDirty();
             long now = System.currentTimeMillis();
             long interval = Math.max(30, configManager.chestFlushIntervalSeconds()) * 1000L;
             if (now - lastChestFlush >= interval) {
                 lastChestFlush = now;
                 chestService.flushAll();
             }
-        }, 30, 30);
+        }), 30, 30);
 
         // Expired invites, join requests, ally requests and cooldowns.
-        Schedulers.asyncRepeating(() -> {
+        Schedulers.asyncRepeating(me.newgen.team.util.ResourceMetrics.measured(() -> {
             teamService.sweepExpired();
             homeService.sweepExpired();
             relationService.sweepExpired();
-        }, 60, 60);
+        }), 60, 60);
 
         if (BSTATS_PLUGIN_ID > 0) {
             this.metrics = new Metrics(this, BSTATS_PLUGIN_ID);
@@ -192,6 +214,17 @@ public final class NewGenTeamPlugin extends JavaPlugin {
             getLogger().warning("bStats disabled: set BSTATS_PLUGIN_ID after registering the plugin at bstats.org.");
         }
 
+        getComponentLogger().info(net.kyori.adventure.text.Component.text(
+                "Database: " + dbSettings.type(), net.kyori.adventure.text.format.NamedTextColor.DARK_GREEN));
+    }
+
+    /**
+     * Prints the NewGen Studio banner as the very first thing in onEnable, before any
+     * hook/service can throw. Previously it sat at the bottom of onEnable, so a failure
+     * in a soft-dependency guard (e.g. missing PlaceholderAPI) aborted onEnable and the
+     * banner never appeared.
+     */
+    private void printStartupBanner() {
         String software = Schedulers.isFolia() ? "Folia" : getServer().getName();
         var console = getComponentLogger();
         String[] banner = {
@@ -207,7 +240,6 @@ public final class NewGenTeamPlugin extends JavaPlugin {
         }
         console.info(net.kyori.adventure.text.Component.text("Discord: https://discord.gg/twKAP7JjW", net.kyori.adventure.text.format.NamedTextColor.DARK_GREEN));
         console.info(net.kyori.adventure.text.Component.text("Server: " + software + " " + getServer().getMinecraftVersion(), net.kyori.adventure.text.format.NamedTextColor.DARK_GREEN));
-        console.info(net.kyori.adventure.text.Component.text("Database: " + dbSettings.type(), net.kyori.adventure.text.format.NamedTextColor.DARK_GREEN));
     }
 
     @Override

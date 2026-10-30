@@ -46,13 +46,19 @@ public final class Json {
     public static TeamHome readHome(String json) {
         if (json == null || json.isEmpty()) return null;
         String world = str(json, "world");
+        if (world == null) return null;
         double x = num(json, "x");
         double y = num(json, "y");
         double z = num(json, "z");
-        float yaw = (float) num(json, "yaw");
-        float pitch = (float) num(json, "pitch");
-        if (world == null) return null;
-        return new TeamHome(world, x, y, z, yaw, pitch);
+        double yaw = num(json, "yaw");
+        double pitch = num(json, "pitch");
+        // A corrupt/truncated blob must NOT silently become a home at (0,0,0) - that would
+        // teleport players to world spawn. NaN marks a missing/unparseable coordinate.
+        if (Double.isNaN(x) || Double.isNaN(y) || Double.isNaN(z)
+                || Double.isNaN(yaw) || Double.isNaN(pitch)) {
+            return null;
+        }
+        return new TeamHome(world, x, y, z, (float) yaw, (float) pitch);
     }
 
     public static String writeNamedHomes(Map<String, TeamHome> homes) {
@@ -115,12 +121,12 @@ public final class Json {
     private static double num(String json, String key) {
         String k = "\"" + key + "\":";
         int i = json.indexOf(k);
-        if (i < 0) return 0;
+        if (i < 0) return Double.NaN;
         i += k.length();
         int j = i;
         while (j < json.length() && "-0123456789.eE".indexOf(json.charAt(j)) >= 0) j++;
         try { return Double.parseDouble(json.substring(i, j)); }
-        catch (NumberFormatException e) { return 0; }
+        catch (NumberFormatException e) { return Double.NaN; }
     }
 
     private static String str(String json, String key) {
@@ -149,6 +155,22 @@ public final class Json {
     }
 
     private static String unescape(String s) {
-        return s.replace("\\\"", "\"").replace("\\\\", "\\");
+        // Single left-to-right pass: chained replace() calls can corrupt sequences like
+        // an escaped backslash followed by an escaped quote, because the first replace
+        // alters the text the second one scans.
+        StringBuilder sb = new StringBuilder(s.length());
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c == '\\' && i + 1 < s.length()) {
+                char n = s.charAt(i + 1);
+                if (n == '"' || n == '\\') {
+                    sb.append(n);
+                    i++;
+                    continue;
+                }
+            }
+            sb.append(c);
+        }
+        return sb.toString();
     }
 }

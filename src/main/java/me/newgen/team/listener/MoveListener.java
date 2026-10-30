@@ -20,6 +20,9 @@ public final class MoveListener implements Listener {
     @EventHandler(ignoreCancelled = true)
     public void onMove(PlayerMoveEvent event) {
         if (!event.hasChangedBlock()) return;
+        // Fast path: when nobody is mid-teleport (the common case at 500 players)
+        // skip the per-player warmup map probe entirely.
+        if (!plugin.homes().hasAnyWarmup()) return;
         var id = event.getPlayer().getUniqueId();
         if (!plugin.homes().isWarmingUp(id)) return;
         plugin.homes().handleMove(id, event.getTo());

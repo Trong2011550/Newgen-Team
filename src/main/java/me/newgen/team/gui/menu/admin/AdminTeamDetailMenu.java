@@ -13,13 +13,16 @@ import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 
 public final class AdminTeamDetailMenu extends Menu {
 
-    private static final SimpleDateFormat DATE = new SimpleDateFormat("dd/MM/yyyy HH:mm");
+    // DateTimeFormatter is thread-safe (SimpleDateFormat is not).
+    private static final DateTimeFormatter DATE =
+            DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm").withZone(ZoneId.systemDefault());
 
     private final NewGenTeamPlugin plugin;
     private final UUID teamId;
@@ -65,7 +68,7 @@ public final class AdminTeamDetailMenu extends Menu {
                         L("gui.common.team-balance", "balance", team.balance()),
                         L("gui.main.kd", "kills", team.kills(), "deaths", team.deaths(),
                                 "kdr", String.format("%.2f", team.kdr())),
-                        L("gui.common.created", "date", DATE.format(new Date(team.createdAt()))))
+                        L("gui.common.created", "date", DATE.format(Instant.ofEpochMilli(team.createdAt()))))
                 .glow(true).build());
 
         if (AdminPermission.VIEW.held(viewer)) {

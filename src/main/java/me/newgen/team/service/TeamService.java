@@ -60,6 +60,12 @@ public final class TeamService {
         this.logs = logs;
     }
 
+    private RelationService relations;
+
+    public void setRelations(RelationService relations) {
+        this.relations = relations;
+    }
+
     /** Persists a team; failures are reported to the error log. */
     public void persist(Team team) {
         // Saving a team that was disbanded meanwhile would resurrect its row.
@@ -128,7 +134,7 @@ public final class TeamService {
         SUCCESS, ALREADY_IN_TEAM, NAME_TAKEN, NAME_INVALID, TEAM_FULL,
         NOT_IN_TEAM, NOT_INVITED, NO_PERMISSION, TARGET_NOT_FOUND,
         CANNOT_TARGET_SELF, INVITE_EXPIRED, NOT_LEADER, TARGET_IN_TEAM,
-        ALREADY_REQUESTED, NO_REQUEST, NOT_READY
+        ALREADY_REQUESTED, NO_REQUEST, NOT_READY, JOINED
     }
 
     public Result createTeam(UUID leader, String leaderName, String name, String tag) {
@@ -170,6 +176,9 @@ public final class TeamService {
         if (reqs != null) {
             for (UUID applicant : reqs.keySet()) joinRequestNames.remove(applicant);
         }
+        // Drop pending ally requests referencing this team so a later accept cannot
+        // write an ALLY edge to a dead id.
+        if (relations != null) relations.clearTeam(team.id());
         // Flush and drop the cached chest before deleteTeam.
         if (chests != null) chests.invalidate(team);
 
@@ -276,11 +285,39 @@ public final class TeamService {
         if (hasTeam(applicant)) return Result.ALREADY_IN_TEAM;
         if (team.isMember(applicant)) return Result.ALREADY_IN_TEAM;
         if (team.size() >= memberLimit(team)) return Result.TEAM_FULL;
+
+        // Honour the team's join settings: an open / public-join team admits the player
+        // immediately instead of queueing an approval request. Without this the two
+        // toggles in the settings menu had no effect on the join flow.
+        if (team.settings().open || team.settings().publicJoin) {
+            return joinDirect(applicant, applicantName, team);
+        }
+
         Map<UUID, Long> reqs = joinRequests.computeIfAbsent(team.id(), k -> new ConcurrentHashMap<>());
         if (hasJoinRequest(team.id(), applicant)) return Result.ALREADY_REQUESTED;
         reqs.put(applicant, System.currentTimeMillis() + inviteTtlMillis);
         if (applicantName != null) joinRequestNames.put(applicant, applicantName);
         return Result.SUCCESS;
+    }
+
+    /** Atomically adds a player to a team without an approval request (open/public join). */
+    private Result joinDirect(UUID applicant, String applicantName, Team team) {
+        // Claim the player slot first; two concurrent joins cannot both add.
+        if (playerTeam.putIfAbsent(applicant, team.id()) != null) return Result.ALREADY_IN_TEAM;
+        synchronized (team) {
+            if (teams.get(team.id()) != team) {
+                playerTeam.remove(applicant, team.id());
+                return Result.NOT_IN_TEAM;
+            }
+            if (team.size() >= memberLimit(team)) {
+                playerTeam.remove(applicant, team.id());
+                return Result.TEAM_FULL;
+            }
+            team.addMember(new TeamMember(applicant, applicantName, TeamRole.RECRUIT, System.currentTimeMillis()));
+        }
+        persist(team);
+        Bukkit.getPluginManager().callEvent(new TeamJoinEvent(team, applicant));
+        return Result.JOINED;
     }
 
     public boolean hasJoinRequest(UUID teamId, UUID applicant) {
@@ -452,8 +489,21 @@ public final class TeamService {
         playerTeam.put(player, teamId);
     }
 
+    /**
+     * Atomically claims the player's team slot. Returns false if the player is already
+     * indexed to a team (possibly a different one), preventing double-team corruption.
+     */
+    public boolean putMemberIndexIfAbsent(UUID player, UUID teamId) {
+        return playerTeam.putIfAbsent(player, teamId) == null;
+    }
+
     public void removeMemberIndex(UUID player) {
         playerTeam.remove(player);
+    }
+
+    /** Conditional remove: only clears the index if it still points at {@code teamId}. */
+    public void removeMemberIndex(UUID player, UUID teamId) {
+        playerTeam.remove(player, teamId);
     }
 
     public void saveAll() {

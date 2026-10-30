@@ -28,6 +28,7 @@ team:
   leader-must-transfer: "<secondary>Bạn là chủ team. Hãy chuyển quyền hoặc giải tán trước."
   list-header: "<secondary><bold>Danh sách Team</bold> <accent>(<primary>%count%<accent>):"
   list-entry: "<accent>- <primary>%name% <accent>[<primary>%tag%<accent>] <dark_gray>(%members% thành viên)"
+  list-truncated: "<muted>Đang hiện top <primary>%shown%<muted> trong tổng số <primary>%total%<muted> team."
 
 member:
   kicked: "<primary>Đã đuổi <accent>%player% <primary>khỏi team."
@@ -114,6 +115,7 @@ notify:
   kicked: "<accent>[<secondary>Team<accent>] <primary>%player% <accent>đã đuổi <primary>%target% <accent>khỏi team."
   role-set: "<accent>[<secondary>Team<accent>] <primary>%player% <accent>đã đặt chức vụ của <primary>%target% <accent>thành %role%<accent>."
   transferred: "<accent>[<secondary>Team<accent>] <primary>%player% <accent>đã chuyển quyền chủ team cho <primary>%target%<accent>."
+  tier-changed: "<accent>[<secondary>Team<accent>] <accent>Cấp team đã đổi thành <primary>%level%<accent>. Đã cập nhật đặc quyền."
 
 search:
   prompt: "<primary>Nhập tên người chơi hoặc tên team vào khung chat <accent>(gõ 'huy' để hủy)<primary>."
@@ -184,6 +186,28 @@ command:
     <accent>/team list <muted>- Liệt kê tất cả team
     <accent>/team admin <muted>- Mở bảng quản trị (staff)
 
+  newgen-help: |-
+    <secondary><bold>█ NewGen Team</bold> <accent>────────────
+    <accent>/newgen info <muted>- Thống kê team toàn server
+    <accent>/newgenteam status <muted>- Tài nguyên đang dùng (chỉ OP)
+    <accent>/newgenteam reload <muted>- Nạp lại cấu hình (admin)
+    <accent>/newgenteam version <muted>- Xem phiên bản
+  version: "<muted>NewGen Team <primary>%version% <muted>| MC <primary>%api%"
+  info:
+    header: "<secondary><bold>█ Team Server</bold> <accent>────────────"
+    teams: "<muted>Số team: <primary>%teams%"
+    members: "<muted>Thành viên: <primary>%members% <muted>(online: <accent>%online%<muted>)"
+    avg: "<muted>Trung bình: <primary>%avg% <muted>thành viên/team"
+    largest: "<muted>Lớn nhất: <primary>%name% <muted>(%size% thành viên)"
+  status:
+    header: "<secondary><bold>█ Tài Nguyên</bold> <accent>────────────"
+    cpu: "<muted>CPU: <primary>%proc% <muted>process | <primary>%sys% <muted>system | %cores% nhân | load %load%"
+    memory: "<muted>Heap: <primary>%used%/%max% MB <muted>(committed %committed% MB) | non-heap %nonheap% MB"
+    disk: "<muted>Disk plugin: <primary>%plugindisk% <muted>(%files% file) | ổ đĩa trống <primary>%free% <muted>/ %total%"
+    objects: "<muted>Đối tượng: <primary>%teams% <muted>team, <primary>%members% <muted>thành viên, <primary>%online% <muted>online"
+    tasks: "<muted>Task plugin: <primary>%runs% <muted>lần, <primary>%millis% ms <muted>CPU tổng"
+    note: "<muted>Heap/CPU là toàn JVM (dùng chung server); disk, đối tượng và task là của riêng plugin."
+
 # ============================================================
 #  GUI - Toàn bộ text hiển thị trong menu.
 #  Placeholder: %team% %player% %leader% %members% %limit% %tier%
@@ -191,6 +215,12 @@ command:
 #               %query% %price% %currency% %status% %count%
 # ============================================================
 gui:
+  # ---- Hộp thoại gốc (1.21.6+) ----
+  dialog:
+    title: "<secondary><bold>NewGen Team"
+    label: "<muted>Nhập nội dung"
+    submit: "<accent><bold>Xác nhận"
+    desc: "<muted>Nhập câu trả lời bên dưới rồi bấm Xác nhận."
   # ---- Nút dùng chung (Icons) ----
   common:
     back: "<secondary>← Quay lại"

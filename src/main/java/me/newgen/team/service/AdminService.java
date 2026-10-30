@@ -45,12 +45,15 @@ public final class AdminService {
                 yield AdminResult.ok("Đã đổi tên team thành " + team.name() + ".");
             }
             case NAME_TAKEN -> AdminResult.fail("Tên team này đã có người dùng.");
-            default -> AdminResult.fail("Tên không hợp lệ (3-16 ký tự).");
+            case NOT_IN_TEAM -> AdminResult.fail("Team không tồn tại.");
+            case NAME_INVALID -> AdminResult.fail("Tên không hợp lệ (3-16 ký tự).");
+            default -> AdminResult.fail("Không thể đổi tên team.");
         };
     }
 
     public AdminResult changeTag(Team team, UUID staff, String staffName, String newTag) {
         if (team == null) return AdminResult.fail("Team không tồn tại.");
+        if (plugin.teams().byId(team.id()) != team) return AdminResult.fail("Team không tồn tại.");
         if (newTag == null || newTag.isBlank()) return AdminResult.fail("Tag không hợp lệ.");
         newTag = newTag.trim();
         if (newTag.length() > plugin.config().maxTagLength()) {
@@ -58,7 +61,11 @@ public final class AdminService {
         }
         for (int i = 0; i < newTag.length(); i++) {
             char c = newTag.charAt(i);
-            if (c < 0x20 || c == 0x7F || c == '\u00A7') return AdminResult.fail("Tag chứa ký tự không hợp lệ.");
+            // Reject control chars, the legacy colour char, and MiniMessage angle brackets
+            // so an admin-set tag cannot inject formatting into messages/scoreboards.
+            if (c < 0x20 || c == 0x7F || c == '\u00A7' || c == '<' || c == '>') {
+                return AdminResult.fail("Tag chứa ký tự không hợp lệ.");
+            }
         }
         String old = team.tag();
         team.tag(newTag);
@@ -112,7 +119,7 @@ public final class AdminService {
         }
         String memberName = m.name();
         team.removeMember(target);
-        plugin.teams().removeMemberIndex(target);
+        plugin.teams().removeMemberIndex(target, team.id());
         plugin.chat().clear(target);
         plugin.teams().persist(team);
         logs().record(team, staff, staffName, AuditAction.KICK, target, memberName, "Đuổi (admin)");
@@ -123,10 +130,26 @@ public final class AdminService {
         if (team == null) return AdminResult.fail("Team không tồn tại.");
         if (target == null) return AdminResult.fail("Không tìm thấy người chơi.");
         if (team.isMember(target)) return AdminResult.fail("Người chơi đó đã ở trong team.");
-        if (plugin.teams().hasTeam(target)) return AdminResult.fail("Người chơi đó đã ở trong một team khác.");
-        if (team.size() >= plugin.teams().memberLimit(team)) return AdminResult.fail("Team đã đầy thành viên.");
-        team.addMember(new TeamMember(target, targetName, TeamRole.RECRUIT, System.currentTimeMillis()));
-        plugin.teams().putMemberIndex(target, team.id());
+        // Atomically claim the player's slot first: two concurrent adds (or a racing
+        // acceptInvite) cannot both index the player, so no double-team corruption.
+        if (!plugin.teams().putMemberIndexIfAbsent(target, team.id())) {
+            return AdminResult.fail("Người chơi đó đã ở trong một team khác.");
+        }
+        synchronized (team) {
+            if (plugin.teams().byId(team.id()) != team) {
+                plugin.teams().removeMemberIndex(target, team.id());
+                return AdminResult.fail("Team không tồn tại.");
+            }
+            if (team.isMember(target)) {
+                plugin.teams().removeMemberIndex(target, team.id());
+                return AdminResult.fail("Người chơi đó đã ở trong team.");
+            }
+            if (team.size() >= plugin.teams().memberLimit(team)) {
+                plugin.teams().removeMemberIndex(target, team.id());
+                return AdminResult.fail("Team đã đầy thành viên.");
+            }
+            team.addMember(new TeamMember(target, targetName, TeamRole.RECRUIT, System.currentTimeMillis()));
+        }
         plugin.teams().persist(team);
         logs().record(team, staff, staffName, AuditAction.ADD_MEMBER, target, targetName, "Thêm (admin)");
         return AdminResult.ok("Đã thêm " + targetName + " vào team.");
@@ -141,7 +164,7 @@ public final class AdminService {
         if (toRemove.isEmpty()) return AdminResult.fail("Team không có thành viên nào ngoài chủ team.");
         for (UUID id : toRemove) {
             team.removeMember(id);
-            plugin.teams().removeMemberIndex(id);
+            plugin.teams().removeMemberIndex(id, team.id());
             plugin.chat().clear(id);
         }
         plugin.teams().persist(team);
@@ -152,8 +175,9 @@ public final class AdminService {
 
     public AdminResult disband(Team team, UUID staff, String staffName) {
         if (team == null) return AdminResult.fail("Team không tồn tại.");
+        // Guard against a double-disband (stale menu click): only the live instance may go.
+        if (plugin.teams().byId(team.id()) != team) return AdminResult.fail("Team không tồn tại.");
         String teamName = team.name();
-        UUID teamId = team.id();
 
         logs().record(team, staff, staffName, AuditAction.DISBAND_TEAM, null, null, "Giải tán (admin)");
         plugin.chat().notifyTeam(team, "notify.disbanded", "player", staffName == null ? "Admin" : staffName);
@@ -277,6 +301,9 @@ public final class AdminService {
         plugin.teams().persist(team);
 
         plugin.chests().invalidate(team);
+        // Tell the team their tier changed (perks/chest size may have grown or shrunk).
+        // Over-cap members are grandfathered; the smaller limit simply blocks new joins.
+        plugin.chat().notifyTeam(team, "notify.tier-changed", "level", newTier);
         logs().record(team, staff, staffName, AuditAction.TIER_CHANGE, null, null,
                 "Cấp " + old + " → " + newTier + " (admin)");
         return AdminResult.ok("Đã đặt cấp team thành " + newTier + ".");
@@ -305,7 +332,13 @@ public final class AdminService {
         if (team == null) return AdminResult.fail("Team không tồn tại.");
         team.kills(0);
         team.deaths(0);
-        team.balance(0);
+        // Same lock as the deposit/withdraw path so a concurrent bank op cannot interleave.
+        team.chestLock.lock();
+        try {
+            team.balance(0);
+        } finally {
+            team.chestLock.unlock();
+        }
         team.home(null);
         team.namedHomes().clear();
 

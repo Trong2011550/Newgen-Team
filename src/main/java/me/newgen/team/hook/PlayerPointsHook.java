@@ -42,10 +42,13 @@ public final class PlayerPointsHook {
         return available;
     }
 
-    private int clamp(long amount) {
-        if (amount > Integer.MAX_VALUE) return Integer.MAX_VALUE;
-        if (amount < 0) return 0;
-        return (int) amount;
+    /**
+     * PlayerPoints' API is int-based. Amounts that do not fit in an int must be rejected,
+     * NOT clamped: clamping a larger price to Integer.MAX_VALUE would under-charge the
+     * buyer (dupe) and desync the balance.
+     */
+    private static boolean fitsInt(long amount) {
+        return amount > 0 && amount <= Integer.MAX_VALUE;
     }
 
     public long balance(UUID player) {
@@ -69,9 +72,9 @@ public final class PlayerPointsHook {
     }
 
     public boolean take(UUID player, long amount) {
-        if (!available || amount <= 0) return false;
+        if (!available || !fitsInt(amount)) return false;
         try {
-            return api.take(player, clamp(amount));
+            return api.take(player, (int) amount);
         } catch (Throwable t) {
             log.log(Level.WARNING, "PlayerPoints take failed", t);
             return false;
@@ -79,9 +82,9 @@ public final class PlayerPointsHook {
     }
 
     public boolean give(UUID player, long amount) {
-        if (!available || amount <= 0) return false;
+        if (!available || !fitsInt(amount)) return false;
         try {
-            return api.give(player, clamp(amount));
+            return api.give(player, (int) amount);
         } catch (Throwable t) {
             log.log(Level.WARNING, "PlayerPoints give failed", t);
             return false;

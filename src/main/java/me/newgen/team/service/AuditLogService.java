@@ -9,16 +9,19 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Consumer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public final class AuditLogService {
 
     public static final int MAX_HISTORY = 1000;
 
     private final StorageProvider storage;
+    private final Logger log;
 
-    public AuditLogService(StorageProvider storage) {
+    public AuditLogService(StorageProvider storage, Logger log) {
         this.storage = storage;
+        this.log = log;
     }
 
     public void record(UUID teamId, String teamName,
@@ -29,9 +32,16 @@ public final class AuditLogService {
         AuditLog entry = AuditLog.now(teamId, teamName, actor, actorName, action,
                 target, targetName, extra);
         try {
-            storage.saveLog(entry).exceptionally(ex -> null);
-        } catch (Exception ignored) {
-
+            // Audit writes must not silently vanish: log failures so admins can spot a
+            // broken audit trail instead of assuming nothing happened.
+            storage.saveLog(entry).exceptionally(ex -> {
+                log.log(Level.WARNING, "Failed to write audit log " + action + " for team "
+                        + teamId + ": " + ex.getMessage(), ex);
+                return null;
+            });
+        } catch (Exception ex) {
+            log.log(Level.WARNING, "Failed to queue audit log " + action + " for team "
+                    + teamId, ex);
         }
     }
 
@@ -54,16 +64,19 @@ public final class AuditLogService {
             return CompletableFuture.completedFuture(Collections.emptyList());
         }
         return storage.loadLogs(teamId, MAX_HISTORY)
-                .exceptionally(ex -> Collections.emptyList());
-    }
-
-    public void history(UUID teamId, Consumer<List<AuditLog>> onResult) {
-        history(teamId).thenAccept(list ->
-                onResult.accept(list == null ? Collections.emptyList() : list));
+                .exceptionally(ex -> {
+                    log.log(Level.WARNING, "Failed to load audit logs for team " + teamId
+                            + ": " + ex.getMessage(), ex);
+                    return Collections.emptyList();
+                });
     }
 
     public CompletableFuture<Void> purge(UUID teamId) {
         if (teamId == null) return CompletableFuture.completedFuture(null);
-        return storage.deleteLogs(teamId).exceptionally(ex -> null);
+        return storage.deleteLogs(teamId).exceptionally(ex -> {
+            log.log(Level.WARNING, "Failed to purge audit logs for team " + teamId
+                    + ": " + ex.getMessage(), ex);
+            return null;
+        });
     }
 }

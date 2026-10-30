@@ -46,6 +46,7 @@ public final class SearchManager {
         Map<UUID, PlayerHit> hits = new LinkedHashMap<>();
 
         for (Team t : teams.all()) {
+            if (hits.size() >= MAX_RESULTS) break;
             for (TeamMember m : t.members()) {
                 if (hits.size() >= MAX_RESULTS) break;
                 if (m.name() != null && normalize(m.name()).contains(q)) {

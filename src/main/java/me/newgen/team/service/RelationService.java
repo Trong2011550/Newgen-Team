@@ -89,6 +89,9 @@ public final class RelationService {
             target.relations().remove(from.id());
             teams.persist(target);
         }
+        // Drop any pending ally request in both directions so the two teams cannot be
+        // enemies yet still auto-ally on the next /ally click.
+        purgeRequests(from.id(), target.id());
         from.relations().put(target.id(), Team.RelationType.ENEMY);
         teams.persist(from);
         return Result.SUCCESS;
@@ -117,6 +120,26 @@ public final class RelationService {
             m.entrySet().removeIf(e -> e.getValue() < now);
         }
         allyRequests.entrySet().removeIf(e -> e.getValue().isEmpty());
+    }
+
+    /** Removes pending ally requests in both directions between two teams. */
+    private void purgeRequests(UUID a, UUID b) {
+        Map<UUID, Long> ma = allyRequests.get(a);
+        if (ma != null) ma.remove(b);
+        Map<UUID, Long> mb = allyRequests.get(b);
+        if (mb != null) mb.remove(a);
+    }
+
+    /**
+     * Drops every ally request referencing a team - called on disband so a dead team's
+     * id cannot linger as a pending request target and later write an ALLY edge to it.
+     */
+    public void clearTeam(UUID teamId) {
+        if (teamId == null) return;
+        allyRequests.remove(teamId);
+        for (Map<UUID, Long> m : allyRequests.values()) {
+            m.remove(teamId);
+        }
     }
 
     public Map<UUID, Long> pendingRequests(UUID teamId) {

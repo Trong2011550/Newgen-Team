@@ -12,16 +12,19 @@ import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 
-import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
 public final class TeamDetailMenu extends Menu {
 
-    private static final SimpleDateFormat DATE = new SimpleDateFormat("dd/MM/yyyy");
+    // DateTimeFormatter is thread-safe (SimpleDateFormat is not).
+    private static final DateTimeFormatter DATE =
+            DateTimeFormatter.ofPattern("dd/MM/yyyy").withZone(ZoneId.systemDefault());
 
     private final NewGenTeamPlugin plugin;
     private final UUID teamId;
@@ -61,7 +64,7 @@ public final class TeamDetailMenu extends Menu {
                 .head(Bukkit.getOfflinePlayer(team.leader()))
                 .name(L("gui.main.team-header", "team", team.name(), "tag", team.tag()))
                 .lore(L("gui.common.leader", "leader", leaderName == null ? "?" : leaderName),
-                        L("gui.common.created", "date", DATE.format(new Date(team.createdAt()))))
+                        L("gui.common.created", "date", DATE.format(Instant.ofEpochMilli(team.createdAt()))))
                 .glow(true).build());
 
         set(19, ItemBuilder.of(Material.PLAYER_HEAD).head(Bukkit.getOfflinePlayer(team.leader()))
@@ -115,6 +118,12 @@ public final class TeamDetailMenu extends Menu {
         me.newgen.team.service.TeamService.Result r =
                 plugin.teams().requestJoin(viewer.getUniqueId(), viewer.getName(), team);
         switch (r) {
+            case JOINED -> {
+                Sounds.success(viewer);
+                plugin.messages().send(viewer, "invite.accepted", "team", team.name());
+                plugin.chat().notifyTeam(team, "notify.joined", "player", viewer.getName());
+                plugin.menus().openMain(viewer);
+            }
             case SUCCESS -> {
                 Sounds.success(viewer);
                 plugin.messages().send(viewer, "join.requested", "team", team.name());
@@ -134,7 +143,10 @@ public final class TeamDetailMenu extends Menu {
     }
 
     private void back() {
-
+        if (onBack != null) {
+            onBack.run();
+            return;
+        }
         plugin.menus().openMain(viewer);
     }
 }

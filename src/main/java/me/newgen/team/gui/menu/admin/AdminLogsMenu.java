@@ -12,19 +12,23 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
 
-import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
 public final class AdminLogsMenu extends PaginatedMenu<AuditLog> {
 
-    private static final SimpleDateFormat DATE = new SimpleDateFormat("dd/MM HH:mm:ss");
+    // DateTimeFormatter is thread-safe (SimpleDateFormat is not).
+    private static final DateTimeFormatter DATE =
+            DateTimeFormatter.ofPattern("dd/MM HH:mm:ss").withZone(ZoneId.systemDefault());
 
     private final NewGenTeamPlugin plugin;
     private final UUID teamId;
-    private List<AuditLog> loaded;
+    // Written from the storage thread's callback, read on the main thread during build.
+    private volatile List<AuditLog> loaded;
 
     public AdminLogsMenu(NewGenTeamPlugin plugin, Player viewer, UUID teamId, int page) {
         super(viewer, page);
@@ -69,7 +73,7 @@ public final class AdminLogsMenu extends PaginatedMenu<AuditLog> {
     @Override
     protected ItemStack render(AuditLog log) {
         List<String> lore = new ArrayList<>();
-        lore.add(L("gui.admin.logs.time-line", "time", DATE.format(new Date(log.timestamp()))));
+        lore.add(L("gui.admin.logs.time-line", "time", DATE.format(Instant.ofEpochMilli(log.timestamp()))));
         lore.add(L("gui.admin.logs.actor-line", "actor",
                 log.actorName() == null ? L("gui.admin.logs.actor-system") : log.actorName()));
         if (log.targetName() != null) {

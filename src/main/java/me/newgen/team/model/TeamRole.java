@@ -1,6 +1,7 @@
 package me.newgen.team.model;
 
 import me.newgen.team.permission.TeamPermission;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Set;
 
@@ -37,19 +38,36 @@ public enum TeamRole {
     }
 
     public Set<TeamPermission> defaultPermissions() {
-        return switch (this.ordinal()) {
-            default -> throw new MatchException(null, null);
-            case 0 -> EnumSet.allOf(TeamPermission.class);
-            case 1 -> {
-                EnumSet<TeamPermission> s = EnumSet.allOf(TeamPermission.class);
-                s.remove((Object)TeamPermission.DISBAND_TEAM);
-                s.remove((Object)TeamPermission.TRANSFER_LEADER);
-                yield s;
+        // Switch on the enum constant (not ordinal): adding or reordering roles can no
+        // longer silently fall through to a thrown MatchException on every permission check.
+        EnumSet<TeamPermission> s = switch (this) {
+            case OWNER -> EnumSet.allOf(TeamPermission.class);
+            case CO_OWNER -> {
+                EnumSet<TeamPermission> set = EnumSet.allOf(TeamPermission.class);
+                set.remove(TeamPermission.DISBAND_TEAM);
+                set.remove(TeamPermission.TRANSFER_LEADER);
+                yield set;
             }
-            case 2 -> EnumSet.of(TeamPermission.INVITE_MEMBER, new TeamPermission[]{TeamPermission.KICK_MEMBER, TeamPermission.REVIEW_INVITES, TeamPermission.REVIEW_JOIN_REQUESTS, TeamPermission.EDIT_SETTINGS, TeamPermission.CHEST_OPEN, TeamPermission.CHEST_DEPOSIT, TeamPermission.CHEST_WITHDRAW, TeamPermission.CHEST_UPGRADE, TeamPermission.SET_HOME, TeamPermission.TELEPORT_HOME, TeamPermission.MANAGE_RELATIONS, TeamPermission.TOGGLE_TEAM_CHAT, TeamPermission.MANAGE_MEMBERS, TeamPermission.WITHDRAW_BALANCE});
-            case 3 -> EnumSet.of(TeamPermission.INVITE_MEMBER, new TeamPermission[]{TeamPermission.KICK_MEMBER, TeamPermission.REVIEW_INVITES, TeamPermission.REVIEW_JOIN_REQUESTS, TeamPermission.CHEST_OPEN, TeamPermission.CHEST_DEPOSIT, TeamPermission.CHEST_WITHDRAW, TeamPermission.TELEPORT_HOME, TeamPermission.TOGGLE_TEAM_CHAT, TeamPermission.WITHDRAW_BALANCE});
-            case 4 -> EnumSet.of(TeamPermission.CHEST_OPEN, TeamPermission.CHEST_DEPOSIT, TeamPermission.CHEST_WITHDRAW, TeamPermission.TELEPORT_HOME, TeamPermission.TOGGLE_TEAM_CHAT);
-            case 5 -> EnumSet.of(TeamPermission.CHEST_OPEN, TeamPermission.CHEST_DEPOSIT, TeamPermission.TELEPORT_HOME);
+            case ADMIN -> EnumSet.of(TeamPermission.INVITE_MEMBER, TeamPermission.KICK_MEMBER,
+                    TeamPermission.REVIEW_INVITES, TeamPermission.REVIEW_JOIN_REQUESTS,
+                    TeamPermission.EDIT_SETTINGS, TeamPermission.CHEST_OPEN, TeamPermission.CHEST_DEPOSIT,
+                    TeamPermission.CHEST_WITHDRAW, TeamPermission.CHEST_UPGRADE, TeamPermission.SET_HOME,
+                    TeamPermission.TELEPORT_HOME, TeamPermission.MANAGE_RELATIONS,
+                    TeamPermission.TOGGLE_TEAM_CHAT, TeamPermission.MANAGE_MEMBERS,
+                    TeamPermission.WITHDRAW_BALANCE);
+            case MOD -> EnumSet.of(TeamPermission.INVITE_MEMBER, TeamPermission.KICK_MEMBER,
+                    TeamPermission.REVIEW_INVITES, TeamPermission.REVIEW_JOIN_REQUESTS,
+                    TeamPermission.CHEST_OPEN, TeamPermission.CHEST_DEPOSIT, TeamPermission.CHEST_WITHDRAW,
+                    TeamPermission.TELEPORT_HOME, TeamPermission.TOGGLE_TEAM_CHAT,
+                    TeamPermission.WITHDRAW_BALANCE);
+            case MEMBER -> EnumSet.of(TeamPermission.CHEST_OPEN, TeamPermission.CHEST_DEPOSIT,
+                    TeamPermission.CHEST_WITHDRAW, TeamPermission.TELEPORT_HOME,
+                    TeamPermission.TOGGLE_TEAM_CHAT);
+            case RECRUIT -> EnumSet.of(TeamPermission.CHEST_OPEN, TeamPermission.CHEST_DEPOSIT,
+                    TeamPermission.TELEPORT_HOME);
         };
+        // Unmodifiable: PermissionManager caches these sets, so a caller mutating the
+        // returned EnumSet would corrupt the role defaults for the whole session.
+        return Collections.unmodifiableSet(s);
     }
 }

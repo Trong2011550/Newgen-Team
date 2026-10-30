@@ -39,6 +39,13 @@ public final class Inventories {
             ItemStack[] itemStackArray;
             try (BukkitObjectInputStream in = new BukkitObjectInputStream((InputStream)bais);){
                 int len = in.readInt();
+                // A corrupt/hostile blob can encode any int here. Allocating new ItemStack[len]
+                // directly risks NegativeArraySizeException or an OOM. Every serialized element
+                // occupies at least one byte, so the count can never exceed the payload size.
+                if (len < 0 || len > data.length) {
+                    throw new IllegalArgumentException(
+                            "Invalid inventory blob length " + len + " for " + data.length + " bytes");
+                }
                 ItemStack[] items = new ItemStack[len];
                 for (int i = 0; i < len; ++i) {
                     items[i] = (ItemStack)in.readObject();

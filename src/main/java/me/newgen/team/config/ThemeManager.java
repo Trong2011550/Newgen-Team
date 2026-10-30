@@ -28,7 +28,10 @@ public final class ThemeManager {
     }
 
     private final Plugin plugin;
-    private final Map<String, String> tokens = new LinkedHashMap<>(DEFAULTS);
+    // Volatile immutable snapshot: load() runs on the main thread while apply()/color()
+    // are read from AsyncChatEvent (netty) threads. Swapping the whole map prevents the
+    // ConcurrentModificationException a live LinkedHashMap would throw mid-iteration.
+    private volatile Map<String, String> tokens = new LinkedHashMap<>(DEFAULTS);
 
     public ThemeManager(Plugin plugin) {
         this.plugin = plugin;
@@ -40,10 +43,12 @@ public final class ThemeManager {
             plugin.saveResource("theme.yml", false);
         }
         FileConfiguration cfg = YamlConfiguration.loadConfiguration(file);
+        Map<String, String> next = new LinkedHashMap<>(DEFAULTS);
         for (String key : DEFAULTS.keySet()) {
             String value = cfg.getString("theme." + key, DEFAULTS.get(key));
-            tokens.put(key, value == null || value.isBlank() ? DEFAULTS.get(key) : value.trim());
+            next.put(key, value == null || value.isBlank() ? DEFAULTS.get(key) : value.trim());
         }
+        this.tokens = java.util.Collections.unmodifiableMap(next);
     }
 
     /** Replaces theme tokens (e.g. {@code <primary>}) with configured MiniMessage tags. */

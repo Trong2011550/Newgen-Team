@@ -50,14 +50,15 @@ public final class PlayerListMenu extends PaginatedMenu<OfflinePlayer> {
     protected List<OfflinePlayer> elements() {
         String q = query == null ? "" : query.toLowerCase(Locale.ROOT).trim();
         List<OfflinePlayer> out = new ArrayList<>();
-        for (OfflinePlayer p : Bukkit.getOfflinePlayers()) {
-            if (p.getName() == null) continue;
-            if (!q.isEmpty() && !p.getName().toLowerCase(Locale.ROOT).contains(q)) continue;
+        // Use the in-memory online-player view, NOT Bukkit.getOfflinePlayers(): the latter
+        // reads the whole usercache.dat from disk on the main thread on every open/page turn.
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            String name = p.getName();
+            if (name == null) continue;
+            if (!q.isEmpty() && !name.toLowerCase(Locale.ROOT).contains(q)) continue;
             out.add(p);
         }
-        out.sort(Comparator
-                .comparing((OfflinePlayer p) -> !p.isOnline())
-                .thenComparing(p -> p.getName(), String.CASE_INSENSITIVE_ORDER));
+        out.sort(Comparator.comparing((OfflinePlayer p) -> p.getName(), String.CASE_INSENSITIVE_ORDER));
         return out;
     }
 

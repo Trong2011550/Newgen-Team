@@ -38,8 +38,18 @@ public final class AdminTeamListMenu extends PaginatedMenu<Team> {
     }
     @Override protected int pageSize() { return 45; }
 
+    /** Memoized per build so decorate() and the render loop share one scan+sort. */
+    private List<Team> memo;
+
+    @Override
+    public void refresh() {
+        memo = null;
+        super.refresh();
+    }
+
     @Override
     protected List<Team> elements() {
+        if (memo != null) return memo;
         String q = query == null ? "" : query.toLowerCase(Locale.ROOT).trim();
         List<Team> out = new ArrayList<>();
         for (Team t : plugin.teams().all()) {
@@ -53,6 +63,7 @@ public final class AdminTeamListMenu extends PaginatedMenu<Team> {
         out.sort(Comparator
                 .comparingInt((Team t) -> t.size()).reversed()
                 .thenComparing(Team::name, String.CASE_INSENSITIVE_ORDER));
+        memo = out;
         return out;
     }
 

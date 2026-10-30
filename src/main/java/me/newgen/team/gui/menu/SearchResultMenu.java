@@ -43,14 +43,25 @@ public final class SearchResultMenu extends PaginatedMenu<Object> {
 
     @Override protected int pageSize() { return 45; }
 
+    /** Memoized per build so decorate() does not re-run the whole search. */
+    private List<Object> memo;
+
+    @Override
+    public void refresh() {
+        memo = null;
+        super.refresh();
+    }
+
     @Override
     protected List<Object> elements() {
+        if (memo != null) return memo;
         List<Object> out = new ArrayList<>();
         if (players) {
             out.addAll(plugin.search().searchPlayers(query));
         } else {
             out.addAll(plugin.search().searchTeams(query));
         }
+        memo = out;
         return out;
     }
 

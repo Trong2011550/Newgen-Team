@@ -170,6 +170,15 @@ public final class HomeService {
         return warmups.containsKey(player);
     }
 
+    /**
+     * O(1) global check so the (very hot) PlayerMoveEvent path can bail out
+     * immediately when nobody is mid-teleport, instead of probing the map per
+     * player per block change - meaningful at 500 players.
+     */
+    public boolean hasAnyWarmup() {
+        return !warmups.isEmpty();
+    }
+
     public void cancelWarmup(UUID player) {
         warmups.remove(player);
         warmupOrigins.remove(player);

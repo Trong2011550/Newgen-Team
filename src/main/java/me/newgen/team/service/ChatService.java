@@ -3,6 +3,7 @@ package me.newgen.team.service;
 import me.newgen.team.config.MessageManager;
 import me.newgen.team.model.Team;
 import me.newgen.team.model.TeamMember;
+import me.newgen.team.scheduler.Schedulers;
 import me.newgen.team.util.Text;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
@@ -40,10 +41,8 @@ public final class ChatService {
     }
 
     public boolean toggle(UUID player) {
-        if (toggled.contains(player)) {
-            toggled.remove(player);
-            return false;
-        }
+        // remove() is atomic and reports prior presence - avoids the check-then-act race.
+        if (toggled.remove(player)) return false;
         toggled.add(player);
         return true;
     }
@@ -59,21 +58,30 @@ public final class ChatService {
             messages.send(sender, "chat.team-disabled");
             return true;
         }
+        // Build the component here (safe: reads concurrent state), then fan out on the
+        // main thread. This method is invoked from AsyncChatEvent, which runs on a netty
+        // thread - Bukkit.getPlayer / Player.sendMessage must not be touched from there.
+        String senderName = sender.getName();
         Component out = Text.legacy(format
-                .replace("%tag%", team.tag())
-                .replace("%team%", team.name())
-                .replace("%player%", sender.getName())
+                .replace("%tag%", stripFormatting(team.tag()))
+                .replace("%team%", stripFormatting(team.name()))
+                .replace("%player%", senderName)
                 // Player input must not inject '&' colour codes into the template.
                 .replace("%message%", stripFormatting(rawMessage)));
-        for (TeamMember m : team.members()) {
-            Player p = Bukkit.getPlayer(m.uuid());
-            if (p != null && p.isOnline()) {
-                p.sendMessage(out);
+        java.util.List<UUID> recipients = new java.util.ArrayList<>();
+        for (TeamMember m : team.members()) recipients.add(m.uuid());
+        boolean log = logToConsole;
+        Schedulers.global(() -> {
+            for (UUID id : recipients) {
+                Player p = Bukkit.getPlayer(id);
+                if (p != null && p.isOnline()) {
+                    p.sendMessage(out);
+                }
             }
-        }
-        if (logToConsole) {
-            Bukkit.getConsoleSender().sendMessage(out);
-        }
+            if (log) {
+                Bukkit.getConsoleSender().sendMessage(out);
+            }
+        });
         return true;
     }
 
@@ -99,11 +107,14 @@ public final class ChatService {
 
     public void notifyTeam(Team team, String messageKey, Object... placeholders) {
         if (team == null) return;
-        for (TeamMember m : team.members()) {
-            Player p = Bukkit.getPlayer(m.uuid());
-            if (p != null && p.isOnline()) {
-                messages.send(p, messageKey, placeholders);
+        // May be invoked from async contexts; resolve players / send on the main thread.
+        Schedulers.global(() -> {
+            for (TeamMember m : team.members()) {
+                Player p = Bukkit.getPlayer(m.uuid());
+                if (p != null && p.isOnline()) {
+                    messages.send(p, messageKey, placeholders);
+                }
             }
-        }
+        });
     }
 }

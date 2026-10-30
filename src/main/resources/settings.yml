@@ -34,3 +34,14 @@ chat:
   # Ghi chat team ra console để staff giám sát.
   # Mirror team chat to the server console so staff can moderate it.
   log-to-console: true
+
+gui:
+  # Cách hiển thị ô nhập chữ (đặt tên, tag, số tiền, tìm kiếm...).
+  # How text prompts (name, tag, amount, search...) are shown to players.
+  #   AUTO    - Dialog gốc cho client >= 1.21.6, tự lùi về sign giả cho client cũ (KHUYẾN NGHỊ).
+  #             Native dialog on 1.21.6+ clients, fake-sign fallback on older clients (RECOMMENDED).
+  #   DIALOG  - Ép dùng dialog cho mọi người (client < 1.21.6 có thể không thấy ô nhập).
+  #             Force dialogs for everyone (clients below 1.21.6 may not see the prompt).
+  #   SIGN    - Luôn dùng sign giả, kể cả client mới. Hữu ích khi server không có Dialog API.
+  #             Always use the fake-sign editor, even on new clients. Useful when the Dialog API is absent.
+  input-method: AUTO
