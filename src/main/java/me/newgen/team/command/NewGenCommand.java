@@ -60,23 +60,37 @@ public final class NewGenCommand implements CommandExecutor, TabCompleter {
                     "sys", ResourceMetrics.percent(s.systemCpuLoad()),
                     "cores", s.processors(),
                     "load", s.loadAverage() < 0 ? "N/A"
-                            : String.format(java.util.Locale.ROOT, "%.2f", s.loadAverage()));
+                            : String.format(java.util.Locale.ROOT, "%.2f", s.loadAverage()),
+                    "plugin", ResourceMetrics.percent(s.pluginCpuLoad()));
             plugin.messages().sendRaw(sender, "command.status.memory",
                     "used", ResourceMetrics.mb(s.heapUsed()),
                     "committed", ResourceMetrics.mb(s.heapCommitted()),
                     "max", s.heapMax() <= 0 ? "N/A" : ResourceMetrics.mb(s.heapMax()),
-                    "nonheap", ResourceMetrics.mb(s.nonHeapUsed()));
+                    "nonheap", ResourceMetrics.mb(s.nonHeapUsed()),
+                    "pct", ResourceMetrics.percentOf(s.heapUsed(), s.heapMax()),
+                    "total", ResourceMetrics.gb(s.physicalTotal()),
+                    "syspct", ResourceMetrics.percentOf(s.heapUsed() + s.nonHeapUsed(), s.physicalTotal()));
             plugin.messages().sendRaw(sender, "command.status.disk",
                     "plugindisk", ResourceMetrics.humanBytes(s.dataFolderBytes()),
                     "files", s.fileCount(),
+                    "pct", ResourceMetrics.percentOf(s.dataFolderBytes(), s.diskTotal()),
                     "free", ResourceMetrics.humanBytes(s.diskFree()),
                     "total", ResourceMetrics.humanBytes(s.diskTotal()));
             plugin.messages().sendRaw(sender, "command.status.objects",
                     "teams", s.teams(), "members", s.members(), "online", s.onlineMembers());
             plugin.messages().sendRaw(sender, "command.status.tasks",
-                    "runs", s.taskRuns(), "millis", s.taskMillis());
+                    "runs", s.taskRuns(), "millis", s.taskMillis(),
+                    "uptime", formatUptime(s.uptimeMillis()));
             plugin.messages().sendRaw(sender, "command.status.note");
         });
+    }
+
+    private static String formatUptime(long millis) {
+        long sec = millis / 1000L;
+        long d = sec / 86400, h = (sec % 86400) / 3600, m = (sec % 3600) / 60;
+        if (d > 0) return d + "d " + h + "h";
+        if (h > 0) return h + "h " + m + "m";
+        return m + "m";
     }
 
     private void handleInfo(CommandSender sender) {
@@ -130,9 +144,12 @@ public final class NewGenCommand implements CommandExecutor, TabCompleter {
     @Override
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                                 @NotNull String alias, @NotNull String[] args) {
-        if (args.length == 1) {
+        // Brigadier calls suggest() with the args typed so far. When the player hits tab
+        // right after "/newgenteam " the array is empty (length 0) - that must still list
+        // every subcommand, so we treat length 0 and 1 the same for the first token.
+        if (args.length <= 1) {
+            String p = args.length == 1 ? args[0].toLowerCase() : "";
             List<String> out = new ArrayList<>();
-            String p = args[0].toLowerCase();
             for (String s : SUBS) {
                 if (s.startsWith(p)) {
                     if (s.equals("status") && !sender.isOp()

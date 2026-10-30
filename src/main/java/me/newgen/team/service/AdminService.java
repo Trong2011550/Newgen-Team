@@ -41,7 +41,7 @@ public final class AdminService {
         return switch (r) {
             case SUCCESS -> {
                 logs().record(team, staff, staffName, AuditAction.RENAME_TEAM,
-                        null, null, old + " → " + team.name());
+                        null, null, old + " -> " + team.name());
                 yield AdminResult.ok("Đã đổi tên team thành " + team.name() + ".");
             }
             case NAME_TAKEN -> AdminResult.fail("Tên team này đã có người dùng.");
@@ -70,7 +70,7 @@ public final class AdminService {
         String old = team.tag();
         team.tag(newTag);
         plugin.teams().persist(team);
-        logs().record(team, staff, staffName, AuditAction.CHANGE_TAG, null, null, old + " → " + newTag);
+        logs().record(team, staff, staffName, AuditAction.CHANGE_TAG, null, null, old + " -> " + newTag);
         return AdminResult.ok("Đã đổi tag team thành " + newTag + ".");
     }
 
@@ -106,7 +106,7 @@ public final class AdminService {
         plugin.teams().persist(team);
         logs().record(team, staff, staffName,
                 promote ? AuditAction.PROMOTE : AuditAction.DEMOTE,
-                target, m.name(), old.name() + " → " + newRole.name());
+                target, m.name(), old.name() + " -> " + newRole.name());
         return AdminResult.ok("Đã đặt chức vụ của " + m.name() + " thành " + newRole.name() + ".");
     }
 
@@ -206,8 +206,8 @@ public final class AdminService {
         plugin.teams().persist(team);
         logs().record(team, staff, staffName,
                 delta > 0 ? AuditAction.BANK_DEPOSIT : AuditAction.BANK_WITHDRAW,
-                null, null, (delta > 0 ? "+" : "") + delta + " → $" + updated + " (admin)");
-        return AdminResult.ok("Quỹ team: $" + current + " → $" + updated + ".");
+                null, null, (delta > 0 ? "+" : "") + delta + " -> $" + updated + " (admin)");
+        return AdminResult.ok("Quỹ team: $" + current + " -> $" + updated + ".");
     }
 
     public AdminResult setBank(Team team, UUID staff, String staffName, long amount) {
@@ -223,7 +223,7 @@ public final class AdminService {
         }
         plugin.teams().persist(team);
         logs().record(team, staff, staffName, AuditAction.BANK_SET, null, null,
-                "$" + old + " → $" + amount + " (admin)");
+                "$" + old + " -> $" + amount + " (admin)");
         return AdminResult.ok("Đã đặt quỹ team thành $" + amount + ".");
     }
 
@@ -305,7 +305,7 @@ public final class AdminService {
         // Over-cap members are grandfathered; the smaller limit simply blocks new joins.
         plugin.chat().notifyTeam(team, "notify.tier-changed", "level", newTier);
         logs().record(team, staff, staffName, AuditAction.TIER_CHANGE, null, null,
-                "Cấp " + old + " → " + newTier + " (admin)");
+                "Cấp " + old + " -> " + newTier + " (admin)");
         return AdminResult.ok("Đã đặt cấp team thành " + newTier + ".");
     }
 

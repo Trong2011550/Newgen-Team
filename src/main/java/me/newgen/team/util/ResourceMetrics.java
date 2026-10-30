@@ -37,15 +37,19 @@ public final class ResourceMetrics {
     private static final AtomicLong taskNanos = new AtomicLong();
     private static final AtomicLong taskRuns = new AtomicLong();
 
+    /** Epoch of the first measurement - the baseline for the plugin's CPU share. */
+    private static final long START_NANOS = System.nanoTime();
+
     public record Snapshot(
             int processors,
             double processCpuLoad,
             double systemCpuLoad,
             double loadAverage,
             long heapUsed, long heapCommitted, long heapMax, long nonHeapUsed,
+            long physicalTotal, long physicalFree,
             int teams, int members, int onlineMembers,
             long dataFolderBytes, long fileCount, long diskFree, long diskTotal,
-            long taskRuns, long taskMillis
+            long taskRuns, long taskMillis, double pluginCpuLoad, long uptimeMillis
     ) {}
 
     /** Wrap a plugin scheduled task so its CPU cost is attributed and reported. */
@@ -68,10 +72,13 @@ public final class ResourceMetrics {
     private static Snapshot sample(NewGenTeamPlugin plugin) {
         int processors = Runtime.getRuntime().availableProcessors();
         double processCpu = -1, systemCpu = -1, loadAvg = -1;
+        long physicalTotal = -1, physicalFree = -1;
         OperatingSystemMXBean osBean = ManagementFactory.getOperatingSystemMXBean();
         if (osBean instanceof com.sun.management.OperatingSystemMXBean sun) {
             processCpu = sun.getProcessCpuLoad();
             systemCpu = sun.getSystemCpuLoad();
+            physicalTotal = sun.getTotalMemorySize();
+            physicalFree = sun.getFreeMemorySize();
         }
         loadAvg = osBean.getSystemLoadAverage();
 
@@ -99,12 +106,20 @@ public final class ResourceMetrics {
         } catch (Exception ignored) {
         }
 
+        long uptimeNanos = System.nanoTime() - START_NANOS;
+        long uptimeMillis = uptimeNanos / 1_000_000L;
+        long taskNanosTotal = taskNanos.get();
+        // Plugin's own scheduled work as a fraction of one core since startup
+        // (values are tiny by design: the tasks run every 30-60s).
+        double pluginCpu = uptimeNanos > 0 ? taskNanosTotal / (double) uptimeNanos : 0.0;
+
         return new Snapshot(
                 processors, processCpu, systemCpu, loadAvg,
                 heap.getUsed(), heap.getCommitted(), heap.getMax(), nonHeap.getUsed(),
+                physicalTotal, physicalFree,
                 teams, members, online,
                 disk[0], disk[1], free, total,
-                taskRuns.get(), taskNanos.get() / 1_000_000L
+                taskRuns.get(), taskNanosTotal / 1_000_000L, pluginCpu, uptimeMillis
         );
     }
 
@@ -160,5 +175,17 @@ public final class ResourceMetrics {
     public static String percent(double load) {
         if (load < 0) return "N/A";
         return String.format(java.util.Locale.ROOT, "%.1f%%", load * 100.0);
+    }
+
+    /** part/total as a percentage; "N/A" when total is unknown (<=0). */
+    public static String percentOf(long part, long total) {
+        if (total <= 0) return "N/A";
+        double pct = Math.max(0.0, part * 100.0 / total);
+        return String.format(java.util.Locale.ROOT, "%.1f%%", pct);
+    }
+
+    public static String gb(long bytes) {
+        if (bytes < 0) return "N/A";
+        return String.format(java.util.Locale.ROOT, "%.1f", bytes / 1073741824.0);
     }
 }

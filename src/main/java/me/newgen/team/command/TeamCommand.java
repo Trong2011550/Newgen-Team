@@ -310,9 +310,12 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
     @Override
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                                 @NotNull String alias, @NotNull String[] args) {
-        if (args.length == 1) {
+        // Brigadier passes the args typed so far; an empty first token (length 0, i.e. tab
+        // right after "/team ") must still list every subcommand.
+        if (args.length <= 1) {
+            String p = args.length == 1 ? args[0].toLowerCase() : "";
             List<String> out = new ArrayList<>();
-            for (String s : SUBS) if (s.startsWith(args[0].toLowerCase())) out.add(s);
+            for (String s : SUBS) if (s.startsWith(p)) out.add(s);
             return out;
         }
         if (args.length == 2) {

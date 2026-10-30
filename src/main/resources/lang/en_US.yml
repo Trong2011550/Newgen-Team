@@ -8,7 +8,7 @@
 #  resolves here, so it must always contain every key.
 #  Do NOT use the § character or legacy & color codes.
 # ============================================================
-prefix: "<secondary><bold>NewGen Team</bold> <dark_gray>»</dark_gray> <accent>"
+prefix: "<secondary><bold>NewGen Team</bold> <dark_gray>></dark_gray> <accent>"
 
 general:
   no-permission: "<secondary>You don't have permission to do that."
@@ -129,9 +129,9 @@ permission:
   title-team: "<secondary><bold>%team% <dark_gray>-</dark_gray> Permissions</bold>"
   weight: "<muted>Rank weight: <accent>%weight%"
   header: "<muted>Permissions:"
-  all: "<primary>✔ Full access"
-  has: "<primary>✔ "
-  missing: "<muted>✖ "
+  all: "<primary>Full access"
+  has: "<primary>+ "
+  missing: "<muted>- "
   # Display labels per permission. Keys must match TeamPermission constants.
   names:
     INVITE_MEMBER: "Invite members"
@@ -172,7 +172,7 @@ command:
   invite-usage: "<secondary>Usage: /team invite <player>"
   kick-usage: "<secondary>Usage: /team kick <player>"
   help: |-
-    <secondary><bold>█ NewGen Team Help</bold> <accent>────────────
+    <secondary><bold>NewGen Team Help</bold>
     <accent>/team <muted>- Open the team menu
     <accent>/team create <name> [tag] <muted>- Create a new team
     <accent>/team invite <player> <muted>- Invite a player
@@ -188,26 +188,26 @@ command:
     <accent>/team admin <muted>- Open the admin panel (staff)
 
   newgen-help: |-
-    <secondary><bold>█ NewGen Team</bold> <accent>────────────
+    <secondary><bold>NewGen Team</bold>
     <accent>/newgen info <muted>- Server-wide team statistics
     <accent>/newgenteam status <muted>- Live resource usage (OP only)
     <accent>/newgenteam reload <muted>- Reload config (admin)
     <accent>/newgenteam version <muted>- Show build info
   version: "<muted>NewGen Team <primary>%version% <muted>| MC <primary>%api%"
   info:
-    header: "<secondary><bold>█ Server Teams</bold> <accent>────────────"
+    header: "<secondary><bold>Server Teams</bold>"
     teams: "<muted>Teams: <primary>%teams%"
     members: "<muted>Members: <primary>%members% <muted>(online: <accent>%online%<muted>)"
     avg: "<muted>Average: <primary>%avg% <muted>members/team"
     largest: "<muted>Largest: <primary>%name% <muted>(%size% members)"
   status:
-    header: "<secondary><bold>█ Resource Usage</bold> <accent>────────────"
-    cpu: "<muted>CPU: <primary>%proc% <muted>process | <primary>%sys% <muted>system | %cores% cores | load %load%"
-    memory: "<muted>Heap: <primary>%used%/%max% MB <muted>(committed %committed% MB) | non-heap %nonheap% MB"
-    disk: "<muted>Plugin disk: <primary>%plugindisk% <muted>(%files% files) | drive free <primary>%free% <muted>of %total%"
+    header: "<secondary><bold>Resource Usage</bold>"
+    cpu: "<muted>CPU: <primary>%proc% <muted>JVM | <primary>%sys% <muted>server | <accent>%plugin% <muted>plugin | %cores% cores | load %load%"
+    memory: "<muted>RAM: <primary>%used%/%max% MB <muted>(<accent>%pct%<muted> of heap) | non-heap %nonheap% MB | server %total% GB (<accent>%syspct%<muted> used)"
+    disk: "<muted>Disk: <primary>%plugindisk% <muted>(%files% files, <accent>%pct%<muted> of drive) | free <primary>%free% <muted>of %total%"
     objects: "<muted>Objects: <primary>%teams% <muted>teams, <primary>%members% <muted>members, <primary>%online% <muted>online"
-    tasks: "<muted>Plugin tasks: <primary>%runs% <muted>runs, <primary>%millis% ms <muted>total CPU"
-    note: "<muted>Heap/CPU are whole-JVM (shared with the server); disk, object and task figures are plugin-owned."
+    tasks: "<muted>Plugin tasks: <primary>%runs% <muted>runs, <primary>%millis% ms <muted>total CPU | uptime %uptime%"
+    note: "<muted>Plugin share is its own scheduled-task cost; JVM/server figures are shared totals the plugin runs inside."
 
 # ============================================================
 #  GUI - All text displayed inside menus.
@@ -224,16 +224,16 @@ gui:
     desc: "<muted>Type your answer below, then press Confirm."
   # ---- Shared buttons (Icons) ----
   common:
-    back: "<secondary>← Back"
-    close: "<secondary>✖ Close"
+    back: "<secondary>Back"
+    close: "<secondary>Close"
     close-lore: "<muted>Close this panel"
-    confirm: "<success>✔ Confirm"
-    cancel: "<danger>✖ Cancel"
+    confirm: "<success>Confirm"
+    cancel: "<danger>Cancel"
     cancel-lore: "<muted>Cancel and go back"
     back-lore: "<muted>Return to the previous menu"
-    next-page: "<secondary>Next page →"
+    next-page: "<secondary>Next page"
     next-page-lore: "<muted>Go to page <accent>%page%"
-    prev-page: "<secondary>← Previous page"
+    prev-page: "<secondary>Previous page"
     prev-page-lore: "<muted>Go to page <accent>%page%"
     click-open: "<primary>Click to open"
     click-manage: "<primary>Click to manage"
@@ -299,7 +299,7 @@ gui:
     permissions: "<secondary><bold>Permissions</bold>"
     homes: "<secondary><bold>Team Homes</bold>"
     relations: "<secondary><bold>Allies / Enemies</bold>"
-    chest-lore: "<muted>Shared storage — level <accent>%level%"
+    chest-lore: "<muted>Shared storage - level <accent>%level%"
     your-role: "<muted>Your role: %role%"
     kd: "<muted>K/D: <accent>%kills%<muted>/<accent>%deaths% <dark_gray>(%kdr%)"
     disband: "<danger><bold>Disband Team</bold>"
@@ -316,17 +316,17 @@ gui:
   # ---- Bank ----
   bank:
     title: "<secondary><bold>Team Bank</bold>"
-    title-team: "<secondary><bold>%team% — Bank</bold>"
+    title-team: "<secondary><bold>%team% - Bank</bold>"
     team-balance: "<muted>Team balance: <accent>$%balance%"
     your-balance: "<secondary><bold>Your Balance</bold>"
     personal-wallet: "<muted>Personal wallet: <accent>$%balance%"
-    deposit: "<secondary><bold>↓ Deposit</bold>"
+    deposit: "<secondary><bold>Deposit</bold>"
     deposit-lore1: "<muted>Move $ from your wallet into the team bank."
     deposit-lore2: "<muted>Every member can deposit."
-    withdraw: "<secondary><bold>↑ Withdraw</bold>"
+    withdraw: "<secondary><bold>Withdraw</bold>"
     withdraw-lore1: "<muted>Move $ from the team bank to your wallet."
     withdraw-lore2: "<muted>Moderator or higher only."
-    withdraw-locked: "<muted><bold>↑ Withdraw (LOCKED)</bold>"
+    withdraw-locked: "<muted><bold>Withdraw (LOCKED)</bold>"
     withdraw-locked-lore: "<danger>Requires Moderator rank or higher."
     amount-hint: "<primary>Click to enter an amount"
     no-withdraw: "<muted>You don't have permission to withdraw."
@@ -335,14 +335,14 @@ gui:
   create:
     title: "<secondary><bold>Create New Team</bold>"
     name-header: "<muted>Name your team:"
-    name-length: "<muted>• 3-%max% characters long"
-    name-allowed: "<muted>• Letters, numbers, spaces & common symbols allowed"
+    name-length: "<muted>- 3-%max% characters long"
+    name-allowed: "<muted>- Letters, numbers, spaces & common symbols allowed"
     sign-hint: "<primary>Click, then type a name on the sign"
 
   # ---- Team homes ----
   home:
     title: "<secondary><bold>Team Homes</bold>"
-    title-team: "<secondary><bold>%team% — Homes</bold>"
+    title-team: "<secondary><bold>%team% - Homes</bold>"
     entry-name: "<secondary><bold>%name%</bold>"
     world-line: "<muted>World: <accent>%world%"
     coords-line: "<muted>X: <accent>%x% <muted>Y: <accent>%y% <muted>Z: <accent>%z%"
@@ -366,10 +366,10 @@ gui:
     empty-hint: "<muted>Find a team and request to join!"
   join-request:
     title: "<secondary><bold>Join Requests</bold>"
-    title-team: "<secondary><bold>%team% — Requests</bold>"
+    title-team: "<secondary><bold>%team% - Requests</bold>"
     entry-name: "<secondary>%player% %status%"
-    status-online: "<success>●"
-    status-offline: "<muted>○"
+    status-online: "<success>ON"
+    status-offline: "<muted>OFF"
     wants-join: "<muted>Wants to join your team."
     left-accept: "<secondary>Left-click: <muted>Accept"
     right-decline: "<danger>Right-click: <muted>Decline"
@@ -380,11 +380,11 @@ gui:
   # ---- Members / roles ----
   member:
     title: "<secondary><bold>Team Members</bold>"
-    title-team: "<secondary><bold>%team% — Members</bold>"
+    title-team: "<secondary><bold>%team% - Members</bold>"
     left-click: "<secondary>Left-click: <muted>Manage role"
     entry-name: "<secondary>%player% %status%"
-    status-online: "<success>●"
-    status-offline: "<muted>○"
+    status-online: "<success>ON"
+    status-offline: "<muted>OFF"
     role-line: "<muted>Role: %role%"
     shift-kick: "<danger>Shift-click: <muted>Kick from the team"
     kick-confirm-title: "<danger>Kick member?"
@@ -413,8 +413,8 @@ gui:
     title: "<secondary><bold>Players</bold>"
     title-query: "<secondary><bold>Players: <accent>%query%</bold>"
     entry-name: "<secondary>%player% %status%"
-    status-online: "<success>●"
-    status-offline: "<muted>○"
+    status-online: "<success>ON"
+    status-offline: "<muted>OFF"
     team-line: "<muted>Team: <accent>%team%"
     status-line: "<muted>Status: %status%"
     state-online: "<success>Online"
@@ -451,8 +451,8 @@ gui:
     chest-slots-line: "<muted>Slots <accent>%slots%"
     balance: "<secondary><bold>Balance</bold>"
     member-name: "<secondary>%player% %status%"
-    status-online: "<success>●"
-    status-offline: "<muted>○"
+    status-online: "<success>ON"
+    status-offline: "<muted>OFF"
     member-role-line: "<muted>Role: %role%"
     request-join: "<secondary><bold>Request To Join</bold>"
     request-join-lore1: "<muted>Send a join request to this team."
@@ -498,13 +498,13 @@ gui:
     title-players: "<secondary><bold>Players: <accent>%query%</bold>"
     title-teams: "<secondary><bold>Teams: <accent>%query%</bold>"
     entry-player: "<secondary>%player% %status%"
-    status-online: "<success>●"
-    status-offline: "<muted>○"
+    status-online: "<success>ON"
+    status-offline: "<muted>OFF"
     team-line: "<muted>Team: <accent>%team%"
     status-line: "<muted>Status: %status%"
     state-online: "<success>Online"
     state-offline: "<muted>Offline"
-    no-action: "<muted>—"
+    no-action: "<muted>-"
     entry-team: "<secondary><bold>%team%</bold> <accent>[<secondary>%tag%<accent>]"
     kills-kdr: "<muted>Kills: <accent>%kills% <muted>KDR: <accent>%kdr%"
     view-team-hint: "<primary>Click to view their team"
@@ -569,7 +569,7 @@ gui:
   # ---- Upgrades ----
   upgrade:
     title: "<secondary><bold>Team Level</bold>"
-    title-team: "<secondary><bold>%team% — Upgrade</bold>"
+    title-team: "<secondary><bold>%team% - Upgrade</bold>"
     your-balance: "<secondary><bold>Your Balance</bold>"
     balance-line: "<muted>Balance: <accent>%balance% %currency%"
     no-playerpoints: "<danger>PlayerPoints is not installed"
@@ -579,16 +579,16 @@ gui:
     status-buyable: "<success>(AVAILABLE)"
     status-locked: "<muted>(LOCKED)"
     perks-header: "<muted>Level %level% package perks:"
-    chest-pages: "<muted>• Chest pages: <accent>%pages% pages"
-    member-limit: "<muted>• Members: <accent>%limit%"
-    home-limit: "<muted>• Team homes: <accent>%limit%"
+    chest-pages: "<muted>- Chest pages: <accent>%pages% pages"
+    member-limit: "<muted>- Members: <accent>%limit%"
+    home-limit: "<muted>- Team homes: <accent>%limit%"
     default-free: "<secondary>Default level (free)"
     owned-unlocked: "<secondary>All perks unlocked."
     need-previous: "<danger>You must buy the previous level first."
     price: "<muted>Price: <accent>%price% %currency%"
     buy-line: "<muted>Buy level <accent>%level%"
-    buy-now: "<secondary><bold>✔ BUY NOW</bold>"
-    not-enough: "<danger><bold>✖ NOT ENOUGH %currency%</bold>"
+    buy-now: "<secondary><bold>BUY NOW</bold>"
+    not-enough: "<danger><bold>NOT ENOUGH %currency%</bold>"
 
   # ---- Admin ----
   admin:
@@ -652,7 +652,7 @@ gui:
       status-line: "<muted>Status: %status%"
       state-online: "<success>Online"
       state-offline: "<muted>Offline"
-      leader-tag: "<danger>★ Team leader"
+      leader-tag: "<danger>Team leader"
       left-promote: "<danger>Left: <muted>promote"
       right-demote: "<danger>Right: <muted>demote"
       shift-left-leader: "<danger>Shift-Left: <muted>make team owner"

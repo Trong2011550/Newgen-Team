@@ -7,7 +7,7 @@
 #  Key nào thiếu sẽ tự fallback sang en_US.
 #  KHÔNG dùng ký tự § hoặc mã màu & cũ.
 # ============================================================
-prefix: "<secondary><bold>NewGen Team</bold> <dark_gray>»</dark_gray> <accent>"
+prefix: "<secondary><bold>NewGen Team</bold> <dark_gray>></dark_gray> <accent>"
 
 general:
   no-permission: "<secondary>Bạn không có quyền làm việc này."
@@ -128,9 +128,9 @@ permission:
   title-team: "<secondary><bold>%team% <dark_gray>-</dark_gray> Phân quyền</bold>"
   weight: "<muted>Cấp bậc: <accent>%weight%"
   header: "<muted>Quyền hạn:"
-  all: "<primary>✔ Toàn quyền"
-  has: "<primary>✔ "
-  missing: "<muted>✖ "
+  all: "<primary>+ Toàn quyền"
+  has: "<primary>+ "
+  missing: "<muted>- "
   # Nhãn tiếng Việt cho từng quyền. Khóa phải trùng tên hằng trong TeamPermission.
   names:
     INVITE_MEMBER: "Mời thành viên"
@@ -171,7 +171,7 @@ command:
   invite-usage: "<secondary>Cách dùng: /team invite <người chơi>"
   kick-usage: "<secondary>Cách dùng: /team kick <người chơi>"
   help: |-
-    <secondary><bold>█ Trợ giúp NewGen Team</bold> <accent>────────────
+    <secondary><bold>Trợ giúp NewGen Team</bold>
     <accent>/team <muted>- Mở menu team
     <accent>/team create <tên> [tag] <muted>- Tạo team mới
     <accent>/team invite <người chơi> <muted>- Mời người chơi
@@ -187,26 +187,26 @@ command:
     <accent>/team admin <muted>- Mở bảng quản trị (staff)
 
   newgen-help: |-
-    <secondary><bold>█ NewGen Team</bold> <accent>────────────
+    <secondary><bold>NewGen Team</bold>
     <accent>/newgen info <muted>- Thống kê team toàn server
     <accent>/newgenteam status <muted>- Tài nguyên đang dùng (chỉ OP)
     <accent>/newgenteam reload <muted>- Nạp lại cấu hình (admin)
     <accent>/newgenteam version <muted>- Xem phiên bản
   version: "<muted>NewGen Team <primary>%version% <muted>| MC <primary>%api%"
   info:
-    header: "<secondary><bold>█ Team Server</bold> <accent>────────────"
+    header: "<secondary><bold>Team Server</bold>"
     teams: "<muted>Số team: <primary>%teams%"
     members: "<muted>Thành viên: <primary>%members% <muted>(online: <accent>%online%<muted>)"
     avg: "<muted>Trung bình: <primary>%avg% <muted>thành viên/team"
     largest: "<muted>Lớn nhất: <primary>%name% <muted>(%size% thành viên)"
   status:
-    header: "<secondary><bold>█ Tài Nguyên</bold> <accent>────────────"
-    cpu: "<muted>CPU: <primary>%proc% <muted>process | <primary>%sys% <muted>system | %cores% nhân | load %load%"
-    memory: "<muted>Heap: <primary>%used%/%max% MB <muted>(committed %committed% MB) | non-heap %nonheap% MB"
-    disk: "<muted>Disk plugin: <primary>%plugindisk% <muted>(%files% file) | ổ đĩa trống <primary>%free% <muted>/ %total%"
+    header: "<secondary><bold>Tài Nguyên</bold>"
+    cpu: "<muted>CPU: <primary>%proc% <muted>JVM | <primary>%sys% <muted>server | <accent>%plugin% <muted>plugin | %cores% nhân | load %load%"
+    memory: "<muted>RAM: <primary>%used%/%max% MB <muted>(<accent>%pct%<muted> heap) | non-heap %nonheap% MB | server %total% GB (<accent>%syspct%<muted> đã dùng)"
+    disk: "<muted>Disk: <primary>%plugindisk% <muted>(%files% file, <accent>%pct%<muted> ổ đĩa) | trống <primary>%free% <muted>/ %total%"
     objects: "<muted>Đối tượng: <primary>%teams% <muted>team, <primary>%members% <muted>thành viên, <primary>%online% <muted>online"
-    tasks: "<muted>Task plugin: <primary>%runs% <muted>lần, <primary>%millis% ms <muted>CPU tổng"
-    note: "<muted>Heap/CPU là toàn JVM (dùng chung server); disk, đối tượng và task là của riêng plugin."
+    tasks: "<muted>Task plugin: <primary>%runs% <muted>lần, <primary>%millis% ms <muted>CPU tổng | chạy %uptime%"
+    note: "<muted>Phần của plugin là chi phí task riêng của nó; số JVM/server là tổng tài nguyên plugin đang chạy trong đó."
 
 # ============================================================
 #  GUI - Toàn bộ text hiển thị trong menu.
@@ -223,16 +223,16 @@ gui:
     desc: "<muted>Nhập câu trả lời bên dưới rồi bấm Xác nhận."
   # ---- Nút dùng chung (Icons) ----
   common:
-    back: "<secondary>← Quay lại"
-    close: "<secondary>✖ Đóng"
+    back: "<secondary> Quay lại"
+    close: "<secondary> Đóng"
     close-lore: "<muted>Đóng bảng này lại"
-    confirm: "<success>✔ Xác nhận"
-    cancel: "<danger>✖ Hủy bỏ"
+    confirm: "<success> Xác nhận"
+    cancel: "<danger> Hủy bỏ"
     cancel-lore: "<muted>Hủy và quay lại"
     back-lore: "<muted>Trở về menu trước đó"
-    next-page: "<secondary>Trang sau →"
+    next-page: "<secondary>Trang sau "
     next-page-lore: "<muted>Tới trang <accent>%page%"
-    prev-page: "<secondary>← Trang trước"
+    prev-page: "<secondary> Trang trước"
     prev-page-lore: "<muted>Tới trang <accent>%page%"
     click-open: "<primary>Nhấn để mở"
     click-manage: "<primary>Nhấn để quản lý"
@@ -298,7 +298,7 @@ gui:
     permissions: "<secondary><bold>Phân quyền</bold>"
     homes: "<secondary><bold>Nhà Team</bold>"
     relations: "<secondary><bold>Liên minh / Kẻ thù</bold>"
-    chest-lore: "<muted>Kho chứa chung — cấp <accent>%level%"
+    chest-lore: "<muted>Kho chứa chung - cấp <accent>%level%"
     your-role: "<muted>Chức vụ của bạn: %role%"
     kd: "<muted>K/D: <accent>%kills%<muted>/<accent>%deaths% <dark_gray>(%kdr%)"
     disband: "<danger><bold>Giải tán Team</bold>"
@@ -315,17 +315,17 @@ gui:
   # ---- Ngân hàng ----
   bank:
     title: "<secondary><bold>Ngân hàng Team</bold>"
-    title-team: "<secondary><bold>%team% — Ngân hàng</bold>"
+    title-team: "<secondary><bold>%team% - Ngân hàng</bold>"
     team-balance: "<muted>Số dư team: <accent>$%balance%"
     your-balance: "<secondary><bold>Số dư của bạn</bold>"
     personal-wallet: "<muted>Ví cá nhân: <accent>$%balance%"
-    deposit: "<secondary><bold>↓ Nạp tiền</bold>"
+    deposit: "<secondary><bold> Nạp tiền</bold>"
     deposit-lore1: "<muted>Chuyển $ từ ví của bạn vào quỹ team."
     deposit-lore2: "<muted>Mọi thành viên đều có thể nạp."
-    withdraw: "<secondary><bold>↑ Rút tiền</bold>"
+    withdraw: "<secondary><bold> Rút tiền</bold>"
     withdraw-lore1: "<muted>Rút $ từ quỹ team về ví của bạn."
     withdraw-lore2: "<muted>Chỉ điều hành trở lên mới dùng được."
-    withdraw-locked: "<muted><bold>↑ Rút tiền (KHÓA)</bold>"
+    withdraw-locked: "<muted><bold> Rút tiền (KHÓA)</bold>"
     withdraw-locked-lore: "<danger>Cần chức vụ Điều hành trở lên."
     amount-hint: "<primary>Nhấn để nhập số tiền"
     no-withdraw: "<muted>Bạn không có quyền rút tiền."
@@ -334,14 +334,14 @@ gui:
   create:
     title: "<secondary><bold>Tạo Team Mới</bold>"
     name-header: "<muted>Đặt tên cho team của bạn:"
-    name-length: "<muted>• Dài 3-%max% ký tự"
-    name-allowed: "<muted>• Cho phép chữ, số, dấu cách & ký tự đặc biệt"
+    name-length: "<muted>- Dài 3-%max% ký tự"
+    name-allowed: "<muted>- Cho phép chữ, số, dấu cách & ký tự đặc biệt"
     sign-hint: "<primary>Nhấn rồi gõ tên vào bảng"
 
   # ---- Nhà team ----
   home:
     title: "<secondary><bold>Nhà Team</bold>"
-    title-team: "<secondary><bold>%team% — Nhà</bold>"
+    title-team: "<secondary><bold>%team% - Nhà</bold>"
     entry-name: "<secondary><bold>%name%</bold>"
     world-line: "<muted>Thế giới: <accent>%world%"
     coords-line: "<muted>X: <accent>%x% <muted>Y: <accent>%y% <muted>Z: <accent>%z%"
@@ -365,10 +365,10 @@ gui:
     empty-hint: "<muted>Hãy tìm team để xin gia nhập!"
   join-request:
     title: "<secondary><bold>Yêu cầu vào Team</bold>"
-    title-team: "<secondary><bold>%team% — Yêu cầu</bold>"
+    title-team: "<secondary><bold>%team% - Yêu cầu</bold>"
     entry-name: "<secondary>%player% %status%"
-    status-online: "<success>●"
-    status-offline: "<muted>○"
+    status-online: "<success>ON"
+    status-offline: "<muted>OFF"
     wants-join: "<muted>Muốn gia nhập team của bạn."
     left-accept: "<secondary>Chuột trái: <muted>Chấp nhận"
     right-decline: "<danger>Chuột phải: <muted>Từ chối"
@@ -379,11 +379,11 @@ gui:
   # ---- Thành viên / chức vụ ----
   member:
     title: "<secondary><bold>Thành viên Team</bold>"
-    title-team: "<secondary><bold>%team% — Thành viên</bold>"
+    title-team: "<secondary><bold>%team% - Thành viên</bold>"
     left-click: "<secondary>Chuột trái: <muted>Quản lý chức vụ"
     entry-name: "<secondary>%player% %status%"
-    status-online: "<success>●"
-    status-offline: "<muted>○"
+    status-online: "<success>ON"
+    status-offline: "<muted>OFF"
     role-line: "<muted>Chức vụ: %role%"
     shift-kick: "<danger>Shift-click: <muted>Đuổi khỏi team"
     kick-confirm-title: "<danger>Đuổi thành viên?"
@@ -412,8 +412,8 @@ gui:
     title: "<secondary><bold>Người chơi</bold>"
     title-query: "<secondary><bold>Người chơi: <accent>%query%</bold>"
     entry-name: "<secondary>%player% %status%"
-    status-online: "<success>●"
-    status-offline: "<muted>○"
+    status-online: "<success>ON"
+    status-offline: "<muted>OFF"
     team-line: "<muted>Team: <accent>%team%"
     status-line: "<muted>Trạng thái: %status%"
     state-online: "<success>Trực tuyến"
@@ -450,8 +450,8 @@ gui:
     chest-slots-line: "<muted>Ô chứa <accent>%slots%"
     balance: "<secondary><bold>Số dư</bold>"
     member-name: "<secondary>%player% %status%"
-    status-online: "<success>●"
-    status-offline: "<muted>○"
+    status-online: "<success>ON"
+    status-offline: "<muted>OFF"
     member-role-line: "<muted>Chức vụ: %role%"
     request-join: "<secondary><bold>Xin vào Team</bold>"
     request-join-lore1: "<muted>Gửi yêu cầu gia nhập team này."
@@ -497,13 +497,13 @@ gui:
     title-players: "<secondary><bold>Người chơi: <accent>%query%</bold>"
     title-teams: "<secondary><bold>Team: <accent>%query%</bold>"
     entry-player: "<secondary>%player% %status%"
-    status-online: "<success>●"
-    status-offline: "<muted>○"
+    status-online: "<success>ON"
+    status-offline: "<muted>OFF"
     team-line: "<muted>Team: <accent>%team%"
     status-line: "<muted>Trạng thái: %status%"
     state-online: "<success>Trực tuyến"
     state-offline: "<muted>Ngoại tuyến"
-    no-action: "<muted>—"
+    no-action: "<muted>-"
     entry-team: "<secondary><bold>%team%</bold> <accent>[<secondary>%tag%<accent>]"
     kills-kdr: "<muted>Hạ gục: <accent>%kills% <muted>KDR: <accent>%kdr%"
     view-team-hint: "<primary>Nhấn để xem team của họ"
@@ -568,7 +568,7 @@ gui:
   # ---- Nâng cấp ----
   upgrade:
     title: "<secondary><bold>Cấp độ Team</bold>"
-    title-team: "<secondary><bold>%team% — Nâng cấp</bold>"
+    title-team: "<secondary><bold>%team% - Nâng cấp</bold>"
     your-balance: "<secondary><bold>Số dư của bạn</bold>"
     balance-line: "<muted>Số dư: <accent>%balance% %currency%"
     no-playerpoints: "<danger>Chưa cài PlayerPoints"
@@ -578,16 +578,16 @@ gui:
     status-buyable: "<success>(CÓ THỂ MUA)"
     status-locked: "<muted>(KHÓA)"
     perks-header: "<muted>Quyền lợi gói cấp %level%:"
-    chest-pages: "<muted>• Trang rương: <accent>%pages% trang"
-    member-limit: "<muted>• Thành viên: <accent>%limit%"
-    home-limit: "<muted>• Nhà team: <accent>%limit%"
+    chest-pages: "<muted>- Trang rương: <accent>%pages% trang"
+    member-limit: "<muted>- Thành viên: <accent>%limit%"
+    home-limit: "<muted>- Nhà team: <accent>%limit%"
     default-free: "<secondary>Cấp mặc định (miễn phí)"
     owned-unlocked: "<secondary>Đã mở khóa toàn bộ quyền lợi."
     need-previous: "<danger>Cần mua cấp trước đó trước."
     price: "<muted>Giá: <accent>%price% %currency%"
     buy-line: "<muted>Mua cấp <accent>%level%"
-    buy-now: "<secondary><bold>✔ MUA NGAY</bold>"
-    not-enough: "<danger><bold>✖ KHÔNG ĐỦ %currency%</bold>"
+    buy-now: "<secondary><bold> MUA NGAY</bold>"
+    not-enough: "<danger><bold> KHÔNG ĐỦ %currency%</bold>"
 
   # ---- Quản trị (admin) ----
   admin:
@@ -651,7 +651,7 @@ gui:
       status-line: "<muted>Trạng thái: %status%"
       state-online: "<success>Trực tuyến"
       state-offline: "<muted>Ngoại tuyến"
-      leader-tag: "<danger>★ Chủ team"
+      leader-tag: "<danger> Chủ team"
       left-promote: "<danger>Trái: <muted>thăng chức"
       right-demote: "<danger>Phải: <muted>giáng chức"
       shift-left-leader: "<danger>Shift-Trái: <muted>đặt làm chủ team"

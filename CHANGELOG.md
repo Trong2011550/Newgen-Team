@@ -34,6 +34,8 @@ Tất cả thay đổi quan trọng của plugin NewGenTeam được ghi lại t
 - **`/newgen info`** — thống kê công khai: **số team đang có trên server**, tổng thành viên, số online, trung bình thành viên/team, team lớn nhất.
 - `reload` (admin) và `version` trên cùng lệnh gốc; tab-complete theo quyền.
 - Đăng ký qua Brigadier lifecycle (`LifecycleEvents.COMMANDS`) như `/team`.
+- **`status` hiển thị tỷ lệ plugin / tổng tài nguyên server** (bản cuối): CPU có thêm dòng `<plugin>` = phần CPU do scheduled-task của riêng plugin tiêu thụ (tính trên 1 nhân, tích lũy từ lúc bật); RAM hiển thị `%` dùng trên heap max và `%` trên **tổng RAM vật lý của server** (`getTotalMemorySize`) + dung lượng GB vật lý; Disk hiển thị `%` dung lượng data-folder plugin so với **tổng ổ đĩa**; thêm `uptime` của plugin. Helper mới `ResourceMetrics.percentOf(part,total)` + `gb()`.
+- **Sửa gợi ý lệnh (tab-complete)**: `NewGenCommand` và `TeamCommand` trước đây bỏ sót trường hợp Brigadier truyền `args.length == 0` (bấm Tab ngay sau `/newgenteam ` hoặc `/team ` chưa gõ gì) → không hiện gì. Nay `args.length <= 1` đều liệt kê toàn bộ subcommand (vẫn lọc theo quyền).
 
 ### Tối ưu cho 500 người chơi
 - **Gộp ghi kill/death (đóng A7 đã hoãn)**: `addKill`/`addDeath` chỉ tăng trong bộ nhớ và đánh dấu team “dirty”; một lần flush chu kỳ (30s) ghi gộp mỗi team **một lần** thay vì mỗi mạng. Dữ liệu vẫn đọc tức thì từ cache; `saveAll()` khi tắt sạch + executor storage được drain nên **không mất dữ liệu** (chỉ crash cứng trong 1 cửa sổ flush mới trễ).
@@ -44,6 +46,7 @@ Tất cả thay đổi quan trọng của plugin NewGenTeam được ghi lại t
 ### Ngôn ngữ
 - Thêm key `command.info.*`, `command.status.*`, `command.newgen-help`, `command.version` và `gui.dialog.*` (gồm `desc`) cho cả `vi_VN.yml` lẫn `en_US.yml`.
 - `settings.yml` thêm mục `gui.input-method` (kèm chú thích song ngữ AUTO/DIALOG/SIGN).
+- **Dọn ký tự unicode trang trí** trong `lang/*.yml` và `AdminService.java`: bỏ `█ ─ ✔ ✖ ← → ↑ ↓ ★ » ● ○ — •`, thay bằng nhãn chữ/ASCII gọn (`Back`, `Confirm`, `Cancel`, `ON`/`OFF`, `+`/`-`, `->`, `-`). Header lệnh chỉ còn tiêu đề chữ, không còn dải gạch trang trí. Dấu tiếng Việt và nội dung giữ nguyên.
 - `en_US.yml` + `vi_VN.yml`: thêm `notify.tier-changed`, `team.list-truncated` (đợt rà soát bug).
 
 ### Vá lỗi & rà soát toàn diện (đợt A/B/C/D — gộp vào bản phát hành này)
